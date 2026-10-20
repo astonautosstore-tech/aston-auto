@@ -3,10 +3,30 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, X, CheckCircle2, ArrowRight, Phone, ShieldCheck, Gauge, Zap, Cog, Calendar } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  X,
+  CheckCircle2,
+  ArrowRight,
+  Phone,
+  ShieldCheck,
+  Gauge,
+  Zap,
+  Cog,
+  Calendar,
+  MessageSquare,
+  Clock,
+  Send,
+  Loader2,
+  Sparkles,
+} from "lucide-react";
+import { z } from "zod";
 import { Car, Comment } from "@/types/database";
 import Container from "@/components/ui/Container";
 import { formatUSD } from "@/lib/utils";
+import { createBrowserClient } from "@/lib/supabase/browser";
+import CarReviews from "@/components/cars/CarReviews";
 
 interface CarDetailClientProps {
   car: Car;
@@ -14,16 +34,56 @@ interface CarDetailClientProps {
   comments?: Comment[];
 }
 
-export default function CarDetailClient({ car, similarCars }: CarDetailClientProps) {
+const inquirySchema = z.object({
+  name: z.string().trim().min(2, "Name must be at least 2 characters").max(80),
+  email: z.string().trim().email("Please provide a valid email address").max(120),
+  phone: z.string().trim().min(7, "Please provide a valid phone number").max(30),
+  message: z.string().trim().min(5, "Please enter your inquiry details").max(1000),
+  preferredContact: z.enum(["whatsapp", "call", "email"]).default("whatsapp"),
+});
+
+const testDriveSchema = z.object({
+  name: z.string().trim().min(2, "Name must be at least 2 characters").max(80),
+  email: z.string().trim().email("Please provide a valid email address").max(120),
+  phone: z.string().trim().min(7, "Please provide a valid phone number").max(30),
+  preferredDate: z.string().min(1, "Please choose a preferred date"),
+  preferredTime: z.string().min(1, "Please choose a preferred time slot"),
+});
+
+export default function CarDetailClient({
+  car,
+  similarCars,
+  comments = [],
+}: CarDetailClientProps) {
   const images = car.images && car.images.length > 0 ? car.images : [car.hero_image];
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  // Inquire Modal State
+  const [inquireModalOpen, setInquireModalOpen] = useState(false);
+  const [inquireLoading, setInquireLoading] = useState(false);
+  const [inquireSubmitted, setInquireSubmitted] = useState(false);
+  const [inquireError, setInquireError] = useState<string | null>(null);
+  const [inquireForm, setInquireForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    message: `Hello, I would like more information and private acquisition details on the ${car.year} ${car.title} (${formatUSD(car.discount_price ?? car.price)}).`,
+    preferredContact: "whatsapp" as "whatsapp" | "call" | "email",
+    honeypot: "",
+  });
+
+  // Test Drive Modal State
   const [testDriveModalOpen, setTestDriveModalOpen] = useState(false);
-  const [bookingSubmitted, setBookingSubmitted] = useState(false);
-  const [bookingData, setBookingData] = useState({
+  const [testDriveLoading, setTestDriveLoading] = useState(false);
+  const [testDriveSubmitted, setTestDriveSubmitted] = useState(false);
+  const [testDriveError, setTestDriveError] = useState<string | null>(null);
+  const [testDriveForm, setTestDriveForm] = useState({
     name: "",
     email: "",
     phone: "",
     preferredDate: "",
+    preferredTime: "Morning (10:00 AM - 1:00 PM)",
+    honeypot: "",
   });
 
   const nextImage = () => {
@@ -34,10 +94,107 @@ export default function CarDetailClient({ car, similarCars }: CarDetailClientPro
     setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
   };
 
-  const handleBookingSubmit = (e: React.FormEvent) => {
+  const handleInquireSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setBookingSubmitted(true);
+    setInquireError(null);
+
+    // Bot check
+    if (inquireForm.honeypot) {
+      setInquireSubmitted(true);
+      return;
+    }
+
+    const validation = inquirySchema.safeParse({
+      name: inquireForm.name,
+      email: inquireForm.email,
+      phone: inquireForm.phone,
+      message: inquireForm.message,
+      preferredContact: inquireForm.preferredContact,
+    });
+
+    if (!validation.success) {
+      setInquireError(validation.error.issues[0]?.message || "Please check your inputs.");
+      return;
+    }
+
+    setInquireLoading(true);
+    try {
+      const supabase = createBrowserClient();
+      const { error } = await supabase.from("inquiries").insert({
+        car_id: car.id,
+        car_title: car.title,
+        name: validation.data.name,
+        email: validation.data.email,
+        phone: validation.data.phone,
+        message: validation.data.message,
+        preferred_contact: validation.data.preferredContact,
+        status: "new",
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      setInquireSubmitted(true);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to submit inquiry.";
+      setInquireError(msg);
+    } finally {
+      setInquireLoading(false);
+    }
   };
+
+  const handleTestDriveSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setTestDriveError(null);
+
+    // Bot check
+    if (testDriveForm.honeypot) {
+      setTestDriveSubmitted(true);
+      return;
+    }
+
+    const validation = testDriveSchema.safeParse({
+      name: testDriveForm.name,
+      email: testDriveForm.email,
+      phone: testDriveForm.phone,
+      preferredDate: testDriveForm.preferredDate,
+      preferredTime: testDriveForm.preferredTime,
+    });
+
+    if (!validation.success) {
+      setTestDriveError(validation.error.issues[0]?.message || "Please check your inputs.");
+      return;
+    }
+
+    setTestDriveLoading(true);
+    try {
+      const supabase = createBrowserClient();
+      const { error } = await supabase.from("test_drives").insert({
+        car_id: car.id,
+        car_title: car.title,
+        name: validation.data.name,
+        email: validation.data.email,
+        phone: validation.data.phone,
+        preferred_date: validation.data.preferredDate,
+        preferred_time: validation.data.preferredTime,
+        status: "pending",
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      setTestDriveSubmitted(true);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to book appointment.";
+      setTestDriveError(msg);
+    } finally {
+      setTestDriveLoading(false);
+    }
+  };
+
+  const todayStr = new Date().toISOString().split("T")[0];
 
   return (
     <div className="min-h-screen bg-white text-neutral-900 pt-20 sm:pt-24">
@@ -46,9 +203,13 @@ export default function CarDetailClient({ car, similarCars }: CarDetailClientPro
         <Container>
           <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
             <div className="flex items-center gap-2 text-neutral-500">
-              <Link href="/" className="hover:text-neutral-900">Home</Link>
+              <Link href="/" className="hover:text-neutral-900">
+                Home
+              </Link>
               <span>/</span>
-              <Link href="/inventory" className="hover:text-neutral-900">Inventory</Link>
+              <Link href="/inventory" className="hover:text-neutral-900">
+                Inventory
+              </Link>
               <span>/</span>
               <span className="text-neutral-900 font-semibold">{car.title}</span>
             </div>
@@ -64,11 +225,10 @@ export default function CarDetailClient({ car, similarCars }: CarDetailClientPro
         </Container>
       </div>
 
-      {/* ─── 2. MAIN VEHICLE GALLERY & PURCHASE DESK ─── */}
+      {/* ─── 2. MAIN VEHICLE GALLERY & SPECIFICATION DESK ─── */}
       <section className="py-8 sm:py-12">
         <Container>
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
-            
             {/* Left: Gallery (Main photo + thumbnails) */}
             <div className="lg:col-span-7 space-y-4">
               <div className="relative aspect-[16/10] w-full rounded-2xl overflow-hidden bg-neutral-100 border border-neutral-200 shadow-sm">
@@ -141,29 +301,39 @@ export default function CarDetailClient({ car, similarCars }: CarDetailClientPro
                 <div className="flex items-center gap-3 p-3.5 bg-[#F9FAFB] rounded-xl border border-neutral-200">
                   <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0" />
                   <div>
-                    <span className="text-xs font-bold text-neutral-900 block">150-Point Certified</span>
-                    <span className="text-[11px] text-neutral-500">Includes clean title guarantee</span>
+                    <span className="text-xs font-bold text-neutral-900 block">
+                      150-Point Certified
+                    </span>
+                    <span className="text-[11px] text-neutral-500">
+                      Clean title & verified Carfax
+                    </span>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-3 p-3.5 bg-[#F9FAFB] rounded-xl border border-neutral-200">
                   <Calendar className="w-5 h-5 text-neutral-800 shrink-0" />
                   <div>
-                    <span className="text-xs font-bold text-neutral-900 block">Nationwide Delivery</span>
-                    <span className="text-[11px] text-neutral-500">Enclosed carrier to your home</span>
+                    <span className="text-xs font-bold text-neutral-900 block">
+                      Nationwide Delivery
+                    </span>
+                    <span className="text-[11px] text-neutral-500">
+                      Enclosed carrier directly to you
+                    </span>
                   </div>
                 </div>
               </div>
 
               {/* Vehicle Description */}
               <div className="pt-6 border-t border-neutral-200">
-                <h2 className="text-base font-bold text-neutral-950 mb-3 uppercase tracking-wider text-xs">
+                <h2 className="text-xs font-bold text-neutral-950 mb-3 uppercase tracking-wider">
                   Vehicle Overview & Details
                 </h2>
                 <div className="text-sm text-neutral-600 leading-relaxed space-y-3">
                   <p>{car.description}</p>
                   <p>
-                    Equipped with a {car.engine} powertrain, {car.color} exterior paint, and {car.interior_color || "luxury full-leather interior"}. Complete with factory keys, manuals, and verified title records.
+                    Equipped with a {car.engine} powertrain, {car.color} exterior paint, and{" "}
+                    {car.interior_color || "luxury full-leather interior"}. Complete with factory keys,
+                    manuals, and verified title records.
                   </p>
                 </div>
               </div>
@@ -178,9 +348,7 @@ export default function CarDetailClient({ car, similarCars }: CarDetailClientPro
                 <h1 className="text-2xl sm:text-3xl font-extrabold text-neutral-950 tracking-tight leading-tight">
                   {car.title}
                 </h1>
-                <p className="text-xs text-neutral-500 mt-1">
-                  Model: {car.model}
-                </p>
+                <p className="text-xs text-neutral-500 mt-1">Model: {car.model}</p>
               </div>
 
               {/* Price */}
@@ -238,29 +406,48 @@ export default function CarDetailClient({ car, similarCars }: CarDetailClientPro
               {/* Action Buttons */}
               <div className="space-y-3 pt-2">
                 <button
-                  onClick={() => setTestDriveModalOpen(true)}
-                  className="w-full py-4 rounded-xl bg-neutral-950 hover:bg-neutral-800 text-white font-bold text-xs uppercase tracking-wider transition-all shadow-sm"
+                  type="button"
+                  onClick={() => {
+                    setInquireSubmitted(false);
+                    setInquireError(null);
+                    setInquireModalOpen(true);
+                  }}
+                  className="w-full py-4 rounded-xl bg-neutral-950 hover:bg-neutral-800 text-white font-bold text-xs uppercase tracking-wider transition-all shadow-sm flex items-center justify-center gap-2"
                 >
-                  Schedule Showroom Test Drive
+                  <MessageSquare className="w-4 h-4" />
+                  <span>Inquire Now</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTestDriveSubmitted(false);
+                    setTestDriveError(null);
+                    setTestDriveModalOpen(true);
+                  }}
+                  className="w-full py-3.5 rounded-xl bg-white border border-neutral-300 hover:bg-neutral-50 text-neutral-900 font-bold text-xs uppercase tracking-wider transition-all shadow-sm flex items-center justify-center gap-2"
+                >
+                  <Calendar className="w-4 h-4" />
+                  <span>Book a Test Drive</span>
                 </button>
 
                 <a
-                  href="tel:+14482264666"
-                  className="w-full inline-flex items-center justify-center gap-2 py-3.5 rounded-xl bg-white border border-neutral-300 text-neutral-900 font-bold text-xs uppercase tracking-wider hover:bg-neutral-50 transition-colors shadow-sm"
-                >
-                  <Phone className="w-4 h-4" />
-                  <span>Call Dealership: +1 448 226 4666</span>
-                </a>
-
-                <a
-                  href={`https://wa.me/14482264666?text=Hello%2C%20I%20am%20interested%20in%20the%20${encodeURIComponent(
+                  href={`https://wa.me/14482264666?text=Hello%20Aston%2C%20I%20am%20interested%20in%20the%20${encodeURIComponent(
                     car.title
-                  )}%20(${formatUSD(car.price)}).`}
+                  )}%20(${formatUSD(car.discount_price ?? car.price)}).`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full inline-flex items-center justify-center gap-2 py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs uppercase tracking-wider transition-colors shadow-sm"
                 >
                   <span>Chat on WhatsApp</span>
+                </a>
+
+                <a
+                  href="tel:+14482264666"
+                  className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-xl text-neutral-600 font-medium text-xs hover:text-neutral-900 transition-colors"
+                >
+                  <Phone className="w-3.5 h-3.5" />
+                  <span>Direct Desk: +1 448 226 4666</span>
                 </a>
               </div>
 
@@ -283,19 +470,27 @@ export default function CarDetailClient({ car, similarCars }: CarDetailClientPro
                   <span className="font-semibold text-neutral-900">{car.fuel_type}</span>
                 </div>
                 <div className="flex justify-between py-1">
-                  <span className="text-neutral-500">Location</span>
-                  <span className="font-semibold text-neutral-900">Beverly Hills Showroom</span>
+                  <span className="text-neutral-500">Showroom</span>
+                  <span className="font-semibold text-neutral-900">450 N Rodeo Dr, Beverly Hills</span>
                 </div>
               </div>
             </div>
-
           </div>
         </Container>
       </section>
 
-      {/* ─── 3. SIMILAR VEHICLES ─── */}
+      {/* ─── 3. APPROVED REVIEWS SECTION ─── */}
+      <section className="py-12 sm:py-16 bg-[#FAFAFA] border-t border-neutral-200">
+        <Container>
+          <div className="max-w-4xl mx-auto">
+            <CarReviews carId={car.id} initialComments={comments} />
+          </div>
+        </Container>
+      </section>
+
+      {/* ─── 4. SIMILAR VEHICLES ─── */}
       {similarCars.length > 0 && (
-        <section className="py-14 sm:py-20 bg-[#F9FAFB] border-t border-neutral-200">
+        <section className="py-14 sm:py-20 bg-white border-t border-neutral-200">
           <Container>
             <div className="flex items-center justify-between mb-8">
               <div>
@@ -361,14 +556,14 @@ export default function CarDetailClient({ car, similarCars }: CarDetailClientPro
         </section>
       )}
 
-      {/* ─── 4. SCHEDULE TEST DRIVE MODAL ─── */}
-      {testDriveModalOpen && (
+      {/* ─── 5. INQUIRE MODAL ─── */}
+      {inquireModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="relative w-full max-w-lg rounded-2xl bg-white border border-neutral-200 p-6 sm:p-8 shadow-2xl space-y-5">
+          <div className="relative w-full max-w-lg rounded-2xl bg-white border border-neutral-200 p-6 sm:p-8 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
             <button
               onClick={() => {
-                setTestDriveModalOpen(false);
-                setBookingSubmitted(false);
+                setInquireModalOpen(false);
+                setInquireSubmitted(false);
               }}
               className="absolute top-5 right-5 p-2 rounded-full text-neutral-400 hover:text-neutral-900 hover:bg-neutral-100 transition-colors"
               aria-label="Close modal"
@@ -376,7 +571,196 @@ export default function CarDetailClient({ car, similarCars }: CarDetailClientPro
               <X className="w-5 h-5" />
             </button>
 
-            {bookingSubmitted ? (
+            {inquireSubmitted ? (
+              <div className="py-8 text-center space-y-4">
+                <div className="w-14 h-14 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
+                  <CheckCircle2 className="w-7 h-7" />
+                </div>
+                <h3 className="font-extrabold text-2xl tracking-tight text-neutral-950">
+                  Inquiry Received
+                </h3>
+                <p className="text-xs sm:text-sm text-neutral-600 max-w-sm mx-auto leading-relaxed">
+                  Thank you. An Aston private client concierge has received your request for the{" "}
+                  <span className="font-bold text-neutral-950">{car.title}</span> and will respond
+                  shortly.
+                </p>
+
+                <div className="pt-3 flex flex-col gap-2">
+                  <a
+                    href={`https://wa.me/14482264666?text=Hello%20Aston%2C%20I%20just%20submitted%20an%20inquiry%20regarding%20the%20${encodeURIComponent(
+                      car.title
+                    )}.`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full py-3 rounded-lg bg-emerald-600 text-white font-bold text-xs uppercase tracking-wider hover:bg-emerald-700 transition-colors"
+                  >
+                    Chat on WhatsApp Now
+                  </a>
+                  <button
+                    onClick={() => {
+                      setInquireModalOpen(false);
+                      setInquireSubmitted(false);
+                    }}
+                    className="w-full py-2.5 rounded-lg border border-neutral-300 text-neutral-700 font-semibold text-xs hover:bg-neutral-50 transition-colors"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div>
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-500 block mb-1">
+                    Direct Dealership Inquiry
+                  </span>
+                  <h3 className="text-xl sm:text-2xl font-extrabold text-neutral-950">
+                    Acquisition & Details
+                  </h3>
+                  <p className="text-xs text-neutral-500 mt-1">
+                    {car.year} {car.title} • {formatUSD(car.discount_price ?? car.price)}
+                  </p>
+                </div>
+
+                {inquireError && (
+                  <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg">
+                    {inquireError}
+                  </div>
+                )}
+
+                <form onSubmit={handleInquireSubmit} className="space-y-4">
+                  {/* Honeypot field */}
+                  <div className="hidden" aria-hidden="true">
+                    <input
+                      type="text"
+                      name="website"
+                      value={inquireForm.honeypot}
+                      onChange={(e) => setInquireForm({ ...inquireForm, honeypot: e.target.value })}
+                      tabIndex={-1}
+                      autoComplete="off"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-neutral-700 mb-1 uppercase tracking-wider">
+                      Your Full Name *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Eleanor Vance"
+                      value={inquireForm.name}
+                      onChange={(e) => setInquireForm({ ...inquireForm, name: e.target.value })}
+                      className="w-full bg-white border border-neutral-300 rounded-lg px-4 py-2.5 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-950"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-neutral-700 mb-1 uppercase tracking-wider">
+                        Email Address *
+                      </label>
+                      <input
+                        type="email"
+                        required
+                        placeholder="eleanor@domain.com"
+                        value={inquireForm.email}
+                        onChange={(e) => setInquireForm({ ...inquireForm, email: e.target.value })}
+                        className="w-full bg-white border border-neutral-300 rounded-lg px-4 py-2.5 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-950"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-neutral-700 mb-1 uppercase tracking-wider">
+                        Phone Number *
+                      </label>
+                      <input
+                        type="tel"
+                        required
+                        placeholder="+1 (555) 000-0000"
+                        value={inquireForm.phone}
+                        onChange={(e) => setInquireForm({ ...inquireForm, phone: e.target.value })}
+                        className="w-full bg-white border border-neutral-300 rounded-lg px-4 py-2.5 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-950"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-neutral-700 mb-1 uppercase tracking-wider">
+                      Preferred Contact Channel
+                    </label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {(["whatsapp", "call", "email"] as const).map((method) => (
+                        <button
+                          key={method}
+                          type="button"
+                          onClick={() => setInquireForm({ ...inquireForm, preferredContact: method })}
+                          className={`py-2 text-xs font-semibold rounded-lg border capitalize transition-all ${
+                            inquireForm.preferredContact === method
+                              ? "bg-neutral-950 text-white border-neutral-950"
+                              : "bg-white text-neutral-700 border-neutral-300 hover:bg-neutral-50"
+                          }`}
+                        >
+                          {method === "call" ? "Phone Call" : method}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-neutral-700 mb-1 uppercase tracking-wider">
+                      Your Message *
+                    </label>
+                    <textarea
+                      required
+                      rows={3}
+                      value={inquireForm.message}
+                      onChange={(e) => setInquireForm({ ...inquireForm, message: e.target.value })}
+                      className="w-full bg-white border border-neutral-300 rounded-lg px-4 py-2.5 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-950 resize-none"
+                    />
+                  </div>
+
+                  <div className="pt-2">
+                    <button
+                      type="submit"
+                      disabled={inquireLoading}
+                      className="w-full py-3.5 rounded-lg bg-neutral-950 text-white font-bold text-xs uppercase tracking-wider hover:bg-neutral-800 disabled:opacity-50 transition-all shadow-sm flex items-center justify-center gap-2"
+                    >
+                      {inquireLoading ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>Submitting Inquiry...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Send className="w-4 h-4" />
+                          <span>Send Inquiry</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ─── 6. SCHEDULE TEST DRIVE MODAL ─── */}
+      {testDriveModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="relative w-full max-w-lg rounded-2xl bg-white border border-neutral-200 p-6 sm:p-8 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
+            <button
+              onClick={() => {
+                setTestDriveModalOpen(false);
+                setTestDriveSubmitted(false);
+              }}
+              className="absolute top-5 right-5 p-2 rounded-full text-neutral-400 hover:text-neutral-900 hover:bg-neutral-100 transition-colors"
+              aria-label="Close modal"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {testDriveSubmitted ? (
               <div className="py-8 text-center space-y-4">
                 <div className="w-14 h-14 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
                   <CheckCircle2 className="w-7 h-7" />
@@ -385,12 +769,13 @@ export default function CarDetailClient({ car, similarCars }: CarDetailClientPro
                   Appointment Reserved
                 </h3>
                 <p className="text-xs sm:text-sm text-neutral-600 max-w-sm mx-auto leading-relaxed">
-                  Our private client concierge will contact you within 60 minutes to confirm your viewing schedule for the <span className="font-bold text-neutral-950">{car.title}</span>.
+                  Our private client concierge will contact you within 60 minutes to confirm your
+                  viewing schedule for the <span className="font-bold text-neutral-950">{car.title}</span>.
                 </p>
                 <button
                   onClick={() => {
                     setTestDriveModalOpen(false);
-                    setBookingSubmitted(false);
+                    setTestDriveSubmitted(false);
                   }}
                   className="mt-4 px-6 py-2.5 rounded-lg bg-neutral-950 text-white font-semibold text-xs uppercase tracking-wider hover:bg-neutral-800 transition-colors"
                 >
@@ -407,11 +792,31 @@ export default function CarDetailClient({ car, similarCars }: CarDetailClientPro
                     Schedule Test Drive
                   </h3>
                   <p className="text-xs text-neutral-500 mt-1">
-                    Reserve a session with the {car.title}.
+                    Reserve a private session with the {car.title}.
                   </p>
                 </div>
 
-                <form onSubmit={handleBookingSubmit} className="space-y-4">
+                {testDriveError && (
+                  <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg">
+                    {testDriveError}
+                  </div>
+                )}
+
+                <form onSubmit={handleTestDriveSubmit} className="space-y-4">
+                  {/* Honeypot field */}
+                  <div className="hidden" aria-hidden="true">
+                    <input
+                      type="text"
+                      name="company"
+                      value={testDriveForm.honeypot}
+                      onChange={(e) =>
+                        setTestDriveForm({ ...testDriveForm, honeypot: e.target.value })
+                      }
+                      tabIndex={-1}
+                      autoComplete="off"
+                    />
+                  </div>
+
                   <div>
                     <label className="block text-xs font-bold text-neutral-700 mb-1 uppercase tracking-wider">
                       Your Full Name *
@@ -420,8 +825,8 @@ export default function CarDetailClient({ car, similarCars }: CarDetailClientPro
                       type="text"
                       required
                       placeholder="e.g. Michael Harris"
-                      value={bookingData.name}
-                      onChange={(e) => setBookingData({ ...bookingData, name: e.target.value })}
+                      value={testDriveForm.name}
+                      onChange={(e) => setTestDriveForm({ ...testDriveForm, name: e.target.value })}
                       className="w-full bg-white border border-neutral-300 rounded-lg px-4 py-2.5 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-950"
                     />
                   </div>
@@ -435,8 +840,10 @@ export default function CarDetailClient({ car, similarCars }: CarDetailClientPro
                         type="email"
                         required
                         placeholder="michael@domain.com"
-                        value={bookingData.email}
-                        onChange={(e) => setBookingData({ ...bookingData, email: e.target.value })}
+                        value={testDriveForm.email}
+                        onChange={(e) =>
+                          setTestDriveForm({ ...testDriveForm, email: e.target.value })
+                        }
                         className="w-full bg-white border border-neutral-300 rounded-lg px-4 py-2.5 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-950"
                       />
                     </div>
@@ -449,31 +856,73 @@ export default function CarDetailClient({ car, similarCars }: CarDetailClientPro
                         type="tel"
                         required
                         placeholder="+1 (555) 000-0000"
-                        value={bookingData.phone}
-                        onChange={(e) => setBookingData({ ...bookingData, phone: e.target.value })}
+                        value={testDriveForm.phone}
+                        onChange={(e) =>
+                          setTestDriveForm({ ...testDriveForm, phone: e.target.value })
+                        }
                         className="w-full bg-white border border-neutral-300 rounded-lg px-4 py-2.5 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-950"
                       />
                     </div>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-neutral-700 mb-1 uppercase tracking-wider">
-                      Preferred Date
-                    </label>
-                    <input
-                      type="date"
-                      value={bookingData.preferredDate}
-                      onChange={(e) => setBookingData({ ...bookingData, preferredDate: e.target.value })}
-                      className="w-full bg-white border border-neutral-300 rounded-lg px-4 py-2.5 text-sm text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-950"
-                    />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-neutral-700 mb-1 uppercase tracking-wider">
+                        Preferred Date *
+                      </label>
+                      <input
+                        type="date"
+                        required
+                        min={todayStr}
+                        value={testDriveForm.preferredDate}
+                        onChange={(e) =>
+                          setTestDriveForm({ ...testDriveForm, preferredDate: e.target.value })
+                        }
+                        className="w-full bg-white border border-neutral-300 rounded-lg px-4 py-2.5 text-sm text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-950"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-neutral-700 mb-1 uppercase tracking-wider">
+                        Preferred Time *
+                      </label>
+                      <select
+                        value={testDriveForm.preferredTime}
+                        onChange={(e) =>
+                          setTestDriveForm({ ...testDriveForm, preferredTime: e.target.value })
+                        }
+                        className="w-full bg-white border border-neutral-300 rounded-lg px-3 py-2.5 text-sm text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-950"
+                      >
+                        <option value="Morning (10:00 AM - 1:00 PM)">
+                          Morning (10:00 AM - 1:00 PM)
+                        </option>
+                        <option value="Afternoon (1:00 PM - 4:00 PM)">
+                          Afternoon (1:00 PM - 4:00 PM)
+                        </option>
+                        <option value="Evening (4:00 PM - 7:00 PM)">
+                          Evening (4:00 PM - 7:00 PM)
+                        </option>
+                      </select>
+                    </div>
                   </div>
 
                   <div className="pt-2">
                     <button
                       type="submit"
-                      className="w-full py-3.5 rounded-lg bg-neutral-950 text-white font-bold text-xs uppercase tracking-wider hover:bg-neutral-800 transition-all shadow-sm"
+                      disabled={testDriveLoading}
+                      className="w-full py-3.5 rounded-lg bg-neutral-950 text-white font-bold text-xs uppercase tracking-wider hover:bg-neutral-800 disabled:opacity-50 transition-all shadow-sm flex items-center justify-center gap-2"
                     >
-                      Confirm Test Drive Request
+                      {testDriveLoading ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>Reserving Appointment...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Calendar className="w-4 h-4" />
+                          <span>Confirm Test Drive Request</span>
+                        </>
+                      )}
                     </button>
                   </div>
                 </form>

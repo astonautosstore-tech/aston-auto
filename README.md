@@ -1,58 +1,41 @@
-# Aston Auto Stores — World-Class Luxury Automotive E-Commerce
+# Aston — Curators of Extraordinary Motoring
 
-> **Curators of Extraordinary Motoring**  
-> West Africa's most prestigious automotive dealership platform, rebuilt with Apple/Tesla-level craftsmanship, GSAP pinned storytelling, Lenis smooth scrolling, and complete e-commerce flow.
+> **Beverly Hills Flagship Automotive Catalog**  
+> A high-performance luxury automotive catalog built with Next.js 16, Supabase, Tailwind CSS, and full Row-Level Security (RLS). Visitors browse luxury vehicles, submit private inquiries, reserve VIP showroom test drives, and engage via approved owner reviews.
 
 ---
 
-## 🏎️ Features & Highlights
+## 🏎️ Overview & Architecture
 
-- **Awwwards-Level Design (Light Theme Only)**:
-  - Clean luxury palette: Pure Studio White (`#FFFFFF`), Alabaster (`#F7F7F8`), Obsidian Typography (`#0A0A0A`).
-  - Refined British Racing Emerald (`#0D5C3A`) and Champagne Gold (`#C5A059`) accents.
-  - 8px systematic grid throughout with strict accessibility compliance and `prefers-reduced-motion` support.
-- **Cinematic Motion & Animations**:
-  - Silk-smooth scrolling via **Lenis** synchronized with **GSAP ScrollTrigger**.
-  - Custom desktop luxury morphing cursor (`LuxuryCursor.tsx`).
-  - Web Audio synthetic tactile micro-interaction haptics with mute toggle.
-  - Apple/Tesla-style pinned scroll car showcase with live counters and 3D angle shifts.
-  - Interactive **360° Studio Frame Rotator** on vehicle detail pages.
-  - Flying Add-to-Cart flight animation into sticky frosted glass navbar.
-- **Full E-Commerce Flow Up to Payment**:
-  - Persistent **Zustand** cart with deposit mode toggle (10% reservation hold vs full purchase).
-  - Multi-step checkout: Client Profile &bull; Handover Method &bull; Review & Guarantee &bull; Payment Channel.
-  - Payment abstraction in `/lib/payments` (Paystack stub, webhook signature verification, bank wire, showroom terminal).
-  - Vehicles automatically marked **Reserved** in the database upon reservation to prevent double-selling.
-  - Printable luxury acquisition certificate/invoice with tracking code.
-- **Supabase Backend with Row Level Security (RLS)**:
-  - Full schema migrations for `cars`, `car_images`, `profiles`, `wishlists`, `orders`, `order_items`, `comments`, `inquiries`, `test_drives`, `trade_in_requests`, `site_settings`.
-  - Storage bucket `car-images` with public read and admin upload permissions.
-  - Hybrid client with automatic local persistence fallback so the app works seamlessly even before entering remote credentials.
-- **Comprehensive Admin Dashboard (`/admin`)**:
-  - Metrics overview: Total portfolio volume, available vs reserved vs sold cars, pending moderation count.
-  - Vehicle management: Add, edit, delete cars, set prices in ₦, configure specs.
-  - Order management: Filter by status, update status workflow, export CSV.
-  - Comment moderation: Approve, hide, reply to customer reviews.
-  - Dealership settings: Update contact details, delivery fees, and deposit rate.
-- **SEO & Production Excellence**:
-  - Next.js 14+ App Router, 100% SSG pre-rendered car pages (`generateStaticParams`).
-  - Structured JSON-LD metadata (`Vehicle`, `Product`, `AutoDealer`).
-  - Dynamic `sitemap.xml` and `robots.txt`.
+Aston is engineered as a pure **Luxury Car Catalog & Private Concierge Platform**:
+- **Car Catalog**: Real-time inventory browsing, filterable by price, brand, transmission, and body style.
+- **Vehicle Detail Pages**: High-resolution gallery, comprehensive specs matrix, certified inspection guarantees, and approved community reviews.
+- **Lead Generation**: Direct private client inquiries, VIP showroom test-drive bookings, and one-click WhatsApp pre-filled chats.
+- **Zero E-Commerce Bloat**: Strictly no cart, checkout, payment gateways, deposits, trade-ins, or customer accounts.
+- **Executive Admin Console (`/admin`)**:
+  - Protected by Next.js 16 `src/proxy.ts` network proxy and server-side authorization layout.
+  - Role-based security verified against the `admin_users` table.
+  - Multi-image drag-and-drop upload directly to Supabase Storage (`car-images`) with automatic browser canvas WebP compression (max 2000px, quality 0.82).
+  - One-click WhatsApp client replies.
+  - CSV lead export for inquiries and test drive appointments.
+  - Review moderation pipeline with executive replies.
+  - Direct site cache revalidation via `/api/revalidate`.
 
 ---
 
 ## 🛠️ Tech Stack
 
 - **Framework**: Next.js 16+ (App Router, Turbopack, React 19)
-- **Styling**: Tailwind CSS v4, custom CSS variables, glassmorphism
-- **Animation**: GSAP 3, ScrollTrigger, Lenis, Framer Motion
-- **State & Forms**: Zustand (persisted), React Hook Form, Zod
-- **Backend**: Supabase (PostgreSQL, Auth, RLS, Storage)
-- **Currency**: Nigerian Naira (₦) with localized formatting
+- **Supabase**: `@supabase/ssr` (PostgreSQL, Row Level Security, Storage, Auth)
+- **Proxy**: Next.js 16 `src/proxy.ts` (replaces deprecated middleware convention)
+- **Styling**: Tailwind CSS v4 with curated light-mode luxury aesthetic
+- **Validation**: Zod schema validation
+- **Currency**: United States Dollar ($ USD)
+- **Showroom**: 450 North Rodeo Drive, Beverly Hills, CA 90210
 
 ---
 
-## 🚀 Getting Started
+## 🚀 Setup & Installation
 
 ### 1. Clone & Install Dependencies
 ```bash
@@ -60,48 +43,63 @@ npm install
 ```
 
 ### 2. Environment Configuration
-Copy the template environment file:
+Create a `.env.local` file from `.env.example`:
 ```bash
 cp .env.example .env.local
 ```
-Fill in your credentials:
+
+Configure your Supabase credentials:
 ```env
-# Supabase
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
-
-# Paystack (Nigeria Luxury Payments)
-NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY=your-paystack-public-key-here
-PAYSTACK_SECRET_KEY=your-paystack-secret-key-here
-
-# Site URL
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 ```
-> **Note**: The platform includes a built-in hybrid data store initialized with 12 pristine luxury cars. The site works immediately out of the box in development even before connecting to remote Supabase!
+*(Notice: No `service_role` key is required or accepted by the application code. All operations strictly adhere to Supabase Row Level Security).*
 
-### 3. Run Supabase Database Migrations
-Open your Supabase Project SQL Editor and execute the script located in:
-```
-supabase/migrations/001_initial_schema.sql
-```
-This script creates all tables, triggers, storage bucket policies, and sets up Row Level Security.
+---
 
-### 4. Creating the First Admin
-To grant admin privileges to a user, run this in the Supabase SQL Editor after the user registers:
+## 🗄️ Database & Supabase Configuration
+
+### 1. Run Schema Migration
+Open your **Supabase Project &rarr; SQL Editor**, paste and run the contents of:
+```
+supabase/schema.sql
+```
+*(or `supabase/migrations/001_catalog_schema.sql`)*
+
+This script:
+- Creates `admin_users`, `cars`, `comments`, `inquiries`, `test_drives`, and `site_settings`.
+- Configures Row Level Security (RLS) policies allowing public read of inventory, public inserts for leads and pending reviews (without `.select()`), and full read/write for verified administrators.
+- Configures the `car-images` public storage bucket and upload policies.
+
+### 2. Seed Initial Inventory
+In the **Supabase SQL Editor**, run:
+```
+supabase/seed.sql
+```
+This populates the database with 20 world-class luxury vehicles (Aston Martin, Ferrari, Rolls-Royce, Porsche, Lamborghini, Bentley, McLaren), Beverly Hills showroom settings, and initial owner reviews.
+
+### 3. Create First Administrator
+1. In your **Supabase Dashboard &rarr; Authentication &rarr; Users**, click **"Add user"** and create your admin account (e.g. `admin@aston.com`).
+2. Run this SQL command in the Supabase SQL Editor to grant administrative privileges:
 ```sql
-update public.profiles
-set role = 'admin'
-where email = 'your-admin-email@domain.com';
+INSERT INTO public.admin_users (id, email)
+VALUES ('<PASTE-USER-UUID-HERE>', 'admin@aston.com')
+ON CONFLICT (id) DO NOTHING;
 ```
+3. You can now log into the executive portal at [http://localhost:3000/admin/login](http://localhost:3000/admin/login).
 
-### 5. Launch Development Server
+---
+
+## 💻 Development & Production
+
+### Run Development Server
 ```bash
 npm run dev
 ```
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open [http://localhost:3000](http://localhost:3000).
 
-### 6. Production Build
+### Build for Production
 ```bash
 npm run build
 npm run start
@@ -113,14 +111,16 @@ npm run start
 
 1. Push your repository to GitHub.
 2. Import the project in Vercel.
-3. In Project Settings &rarr; **Environment Variables**, add the variables from `.env.example`.
-4. Deploy. Next.js App Router will generate static pages for all 12 supercars automatically!
+3. In **Project Settings &rarr; Environment Variables**, add:
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `NEXT_PUBLIC_SITE_URL` (set to your production domain, e.g. `https://astonauto.com`)
+4. Deploy. Next.js 16 will build static pages and configure the edge proxy automatically.
 
 ---
 
-## 🏛️ Showroom Salons
-- **Ikoyi Flagship Salon**: 14 Alexander Avenue, Ikoyi, Lagos, Nigeria
-- **Victoria Island Gallery**: Luxury Boulevard, Victoria Island, Lagos
-- **Abuja Executive Suite**: Maitama Diplomatic Zone, Abuja
-- **Telephone / WhatsApp**: `+234 812 345 6789`
-- **Executive Email**: `concierge@astonautostores.com`
+## 📍 Showroom Concierge
+- **Showroom Address**: 450 North Rodeo Drive, Beverly Hills, CA 90210
+- **Direct Phone**: `+1 448 226 4666`
+- **WhatsApp Concierge**: `+1 448 226 4666`
+- **Email**: `concierge@aston.com`

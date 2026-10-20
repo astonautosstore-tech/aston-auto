@@ -4,41 +4,41 @@ import React, { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Gauge, Zap, Cog, ArrowRight, Phone } from "lucide-react";
-import { SEED_CARS } from "@/lib/data/seed-cars";
+import { Car } from "@/types/database";
 import { formatUSD } from "@/lib/utils";
 
-// Selected showcase cars for the WordPress hero carousel
-const FEATURED_SLUGS = [
-  "lamborghini-urus",
-  "porsche-911-gt3-rs", 
-  "ferrari-296-gtb",
-  "aston-martin-dbs",
-  "mercedes-amg-g63",
-];
+interface HeroCarCarouselProps {
+  cars?: Car[];
+}
 
-const CAROUSEL_CARS = SEED_CARS.filter((c) => FEATURED_SLUGS.includes(c.slug));
-const SLIDES = CAROUSEL_CARS.length > 0 ? CAROUSEL_CARS : SEED_CARS.slice(0, 5);
-
-export default function HeroCarCarousel() {
+export default function HeroCarCarousel({ cars = [] }: HeroCarCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
 
+  const slides = cars.length > 0 ? cars : [];
+
   const nextSlide = useCallback(() => {
-    setCurrentIndex((prev) => (prev + 1) % SLIDES.length);
-  }, []);
+    if (slides.length <= 1) return;
+    setCurrentIndex((prev) => (prev + 1) % slides.length);
+  }, [slides.length]);
 
   const prevSlide = useCallback(() => {
-    setCurrentIndex((prev) => (prev - 1 + SLIDES.length) % SLIDES.length);
-  }, []);
+    if (slides.length <= 1) return;
+    setCurrentIndex((prev) => (prev - 1 + slides.length) % slides.length);
+  }, [slides.length]);
 
   // Auto-slide every 6 seconds unless paused
   useEffect(() => {
-    if (isPaused) return;
+    if (isPaused || slides.length <= 1) return;
     const interval = setInterval(nextSlide, 6000);
     return () => clearInterval(interval);
-  }, [isPaused, nextSlide]);
+  }, [isPaused, nextSlide, slides.length]);
 
-  const currentCar = SLIDES[currentIndex];
+  if (slides.length === 0) {
+    return null;
+  }
+
+  const currentCar = slides[currentIndex] || slides[0];
 
   return (
     <section
@@ -148,7 +148,7 @@ export default function HeroCarCarousel() {
 
               {/* Slide Counter on photo */}
               <div className="absolute top-4 right-4 px-3 py-1 bg-black/70 backdrop-blur-md text-white text-xs font-bold rounded-full">
-                {currentIndex + 1} / {SLIDES.length}
+                {currentIndex + 1} / {slides.length}
               </div>
 
               {/* Next & Prev Arrows */}
@@ -177,7 +177,7 @@ export default function HeroCarCarousel() {
               {/* Bottom Thumbnail Switcher strip on image */}
               <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between bg-black/60 backdrop-blur-md rounded-xl p-2 px-3">
                 <div className="flex items-center gap-1.5">
-                  {SLIDES.map((_, idx) => (
+                  {slides.map((_, idx) => (
                     <button
                       key={idx}
                       onClick={() => setCurrentIndex(idx)}
@@ -197,7 +197,7 @@ export default function HeroCarCarousel() {
 
             {/* Quick Car Preview Thumbnails below slider */}
             <div className="hidden sm:grid grid-cols-5 gap-2 mt-4">
-              {SLIDES.map((slide, idx) => (
+              {slides.map((slide, idx) => (
                 <button
                   key={slide.id}
                   onClick={() => setCurrentIndex(idx)}

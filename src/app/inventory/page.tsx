@@ -1,15 +1,24 @@
 import { Metadata } from "next";
-import { storeApi } from "@/lib/supabase/client";
+import { createPublicClient } from "@/lib/supabase/public";
 import InventoryClient from "@/components/inventory/InventoryClient";
+import { Car } from "@/types/database";
+
+export const revalidate = 60;
 
 export const metadata: Metadata = {
-  title: "Inventory | Aston Auto Stores",
+  title: "Inventory | Aston",
   description:
-    "Explore our complete collection of exotic supercars, luxury SUVs, and bespoke grand tourers available for immediate delivery in Lagos, Abuja, and throughout Nigeria.",
+    "Explore our complete showroom collection of exotic supercars, luxury SUVs, and bespoke grand tourers with certified inspection and nationwide white-glove delivery.",
 };
 
 export default async function InventoryPage() {
-  const cars = await storeApi.getCars();
+  const publicClient = createPublicClient();
+  const { data: rawCars } = await publicClient
+    .from("cars")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  const cars = (rawCars as Car[]) || [];
 
   return <InventoryClient initialCars={cars} />;
 }

@@ -1,40 +1,57 @@
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { storeApi } from "@/lib/supabase/client";
-import { SEED_CARS } from "@/lib/data/seed-cars";
+import { createPublicClient } from "@/lib/supabase/public";
 import CarDetailClient from "@/components/cars/CarDetailClient";
+import { Car, Comment } from "@/types/database";
+import { formatUSD } from "@/lib/utils";
+
+export const dynamicParams = true;
+export const revalidate = 60;
 
 interface CarPageProps {
   params: Promise<{ slug: string }>;
 }
 
 export async function generateStaticParams() {
-  return SEED_CARS.map((car) => ({
-    slug: car.slug,
-  }));
+  try {
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL) return [];
+    const publicClient = createPublicClient();
+    const { data: cars } = await publicClient
+      .from("cars")
+      .select("slug");
+
+    return (cars || []).map((car: { slug: string }) => ({
+      slug: car.slug,
+    }));
+  } catch {
+    return [];
+  }
 }
 
 export async function generateMetadata({ params }: CarPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const car = await storeApi.getCarBySlug(slug);
+  const publicClient = createPublicClient();
+  const { data: rawCar } = await publicClient
+    .from("cars")
+    .select("*")
+    .eq("slug", slug)
+    .single();
+
+  const car = rawCar as Car | null;
 
   if (!car) {
     return {
-      title: "Vehicle Not Found | Aston Auto Stores",
+      title: "Vehicle Not Found | Aston",
     };
   }
 
-  const priceFormatted = new Intl.NumberFormat("en-NG", {
-    style: "currency",
-    currency: "NGN",
-    maximumFractionDigits: 0,
-  }).format(car.discount_price ?? car.price).replace("NGN", "₦");
+  const priceFormatted = formatUSD(car.discount_price ?? car.price);
 
   return {
-    title: `${car.year} ${car.title} | Aston Auto Stores Nigeria`,
-    description: `Acquire the ${car.title} (${priceFormatted}) at Aston Auto Stores. ${car.horsepower} HP, 0-100 in ${car.acceleration_0_100}s, ${car.color}. Available for immediate delivery in Lagos and Abuja.`,
+    title: `${car.year} ${car.title} | Aston`,
+    description: `Acquire the ${car.title} (${priceFormatted}) at Aston Beverly Hills. ${car.horsepower} HP, 0-60 mph in ${car.acceleration_0_100}s, ${car.color}. Available with certified inspection and nationwide enclosed delivery.`,
     openGraph: {
-      title: `${car.title} — Aston Auto Stores`,
+      title: `${car.title} — Aston`,
       description: car.description,
       images: [
         {
@@ -50,17 +67,29 @@ export async function generateMetadata({ params }: CarPageProps): Promise<Metada
 
 export default async function CarDetailPage({ params }: CarPageProps) {
   const { slug } = await params;
-  const car = await storeApi.getCarBySlug(slug);
+  const publicClient = createPublicClient();
+
+  const { data: rawCar } = await publicClient
+    .from("cars")
+    .select("*")
+    .eq("slug", slug)
+    .single();
+
+  const car = rawCar as Car | null;
 
   if (!car) {
     notFound();
   }
 
-  const allCars = await storeApi.getCars();
-  const comments = await storeApi.getComments(car.id);
-  const similarCars = allCars.filter((c) => c.id !== car.id).slice(0, 3);
+  const [allCarsRes, commentsRes] = await Promise.all([
+    publicClient.from("cars").select("*").neq("id", car.id).limit(3),
+    publicClient.from("comments").select("*").eq("car_id", car.id).eq("status", "approved").order("created_at", { ascending: false }),
+  ]);
 
-  // Structured JSON-LD schema for automotive SEO
+  const similarCars = (allCarsRes.data as Car[]) || [];
+  const comments = (commentsRes.data as Comment[]) || [];
+
+  // Structured JSON-LD schema for automotive SEO in USD
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Car",
@@ -73,12 +102,12 @@ export default async function CarDetailPage({ params }: CarPageProps) {
     },
     model: car.model,
     vehicleModelDate: car.year,
-    itemCondition: "https://schema.org/NewCondition",
+    itemCondition: "https://schema.org/UsedCondition",
     fuelType: car.fuel_type,
     vehicleTransmission: car.transmission,
     offers: {
       "@type": "Offer",
-      priceCurrency: "NGN",
+      priceCurrency: "USD",
       price: car.discount_price ?? car.price,
       availability:
         car.status === "available"
@@ -86,8 +115,8 @@ export default async function CarDetailPage({ params }: CarPageProps) {
           : "https://schema.org/PreOrder",
       seller: {
         "@type": "AutoDealer",
-        name: "Aston Auto Stores",
-        address: "14 Alexander Avenue, Ikoyi, Lagos, Nigeria",
+        name: "Aston",
+        address: "450 North Rodeo Drive, Beverly Hills, CA 90210",
       },
     },
   };

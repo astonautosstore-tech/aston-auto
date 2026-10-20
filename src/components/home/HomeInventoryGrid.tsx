@@ -4,7 +4,6 @@ import React, { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Search, Gauge, Zap, Cog, ArrowRight, CheckCircle2 } from "lucide-react";
-import { SEED_CARS } from "@/lib/data/seed-cars";
 import { formatUSD } from "@/lib/utils";
 import { storeApi } from "@/lib/supabase/client";
 import { Car } from "@/types/database";
@@ -16,8 +15,12 @@ const CATEGORIES = [
   { id: "sedan", label: "Sedans & Coupes" },
 ];
 
-export default function HomeInventoryGrid() {
-  const [cars, setCars] = useState<Car[]>(SEED_CARS);
+interface HomeInventoryGridProps {
+  initialCars?: Car[];
+}
+
+export default function HomeInventoryGrid({ initialCars = [] }: HomeInventoryGridProps) {
+  const [cars, setCars] = useState<Car[]>(initialCars);
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -29,7 +32,7 @@ export default function HomeInventoryGrid() {
           setCars(live);
         }
       } catch (err) {
-        console.warn("Inventory grid fallback to seed:", err);
+        console.warn("Inventory grid live fetch error:", err);
       }
     }
 

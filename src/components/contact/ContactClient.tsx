@@ -2,30 +2,43 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
-import { ChevronDown, CheckCircle2, Phone, Mail, MapPin, Clock, ArrowRight } from "lucide-react";
+import { z } from "zod";
+import { 
+  Phone, 
+  Mail, 
+  MapPin, 
+  Clock, 
+  CheckCircle2, 
+  ChevronDown, 
+  MessageSquare,
+  AlertCircle
+} from "lucide-react";
 import Container from "@/components/ui/Container";
+import { storeApi } from "@/lib/supabase/client";
+import { soundEngine } from "@/lib/sound";
 
-interface FaqItem {
-  question: string;
-  answer: string;
-}
+const contactSchema = z.object({
+  name: z.string().trim().min(2, "Name must be at least 2 characters").max(100, "Name is too long"),
+  email: z.string().trim().email("Please enter a valid email address"),
+  phone: z.string().trim().min(7, "Please enter a valid phone number").max(30, "Phone number is too long"),
+  message: z.string().trim().min(5, "Message must be at least 5 characters").max(2000, "Message cannot exceed 2,000 characters"),
+});
 
-const faqs: FaqItem[] = [
+const FAQS = [
   {
-    question: "What is your vehicle return and guarantee policy?",
+    question: "How does vehicle purchase work at Aston?",
     answer:
-      "We offer a 7-day satisfaction guarantee on all certified pre-owned and exotic vehicles. If you are not completely satisfied, our concierge team will facilitate an exchange or white-glove refund subject to inspection.",
+      "Our process is transparent and personalized. You browse our verified collection, submit an inquiry or schedule a showroom viewing, inspect the car with our advisory team, agree on terms, and complete direct payment with white-glove enclosed delivery or showroom collection.",
   },
   {
-    question: "Do you provide financing and leasing options?",
+    question: "Do you offer private showroom appointments?",
     answer:
-      "Yes. We collaborate with premier US automotive financial institutions to deliver competitive financing packages and structured leases tailored to your portfolio.",
+      "Yes. Our Beverly Hills gallery is open for private appointments Monday through Saturday from 9:00 AM to 7:00 PM PST. We ensure one-on-one attention with an executive advisor.",
   },
   {
-    question: "How do I schedule a test drive or showroom visit?",
+    question: "Are all vehicles certified with clean titles?",
     answer:
-      "You can reserve an appointment directly through our online form, via phone at +1 448 226 4666, or through WhatsApp. We can prepare the vehicle at our Beverly Hills showroom or deliver it to your residence in an enclosed transport.",
+      "Every vehicle undergoes a comprehensive 150-point mechanical, structural, and ECU diagnostic inspection. Full vehicle history reports, title documentation, and provenance dossiers are provided before acquisition.",
   },
   {
     question: "Is nationwide enclosed shipping available?",
@@ -41,17 +54,48 @@ export default function ContactClient() {
     phone: "",
     message: "",
   });
+  const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
+    setErrorMessage("");
+
+    const validation = contactSchema.safeParse(formData);
+    if (!validation.success) {
+      setErrorMessage(validation.error.issues[0]?.message || "Invalid input.");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await storeApi.submitInquiry({
+        name: formData.name.trim(),
+        email: formData.email.trim(),
+        phone: formData.phone.trim(),
+        message: formData.message.trim(),
+        preferred_contact: "whatsapp",
+      });
+
+      soundEngine.playSuccessChime();
+      setSubmitted(true);
+    } catch (err: any) {
+      console.error("Inquiry submission error:", err);
+      setErrorMessage(err?.message || "Failed to submit inquiry. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const toggleFaq = (index: number) => {
     setActiveFaq(activeFaq === index ? null : index);
   };
+
+  const whatsappHref = `https://wa.me/14482264666?text=${encodeURIComponent(
+    `Hello, my name is ${formData.name}. Inquiry: ${formData.message}`
+  )}`;
 
   return (
     <div className="min-h-screen bg-white text-neutral-900 pt-20 sm:pt-24">
@@ -60,7 +104,7 @@ export default function ContactClient() {
         <Container>
           <div className="max-w-3xl">
             <span className="text-xs font-bold uppercase tracking-widest text-neutral-500 mb-2 block">
-              Dealership Concierge & Showroom
+              Dealership Concierge &amp; Showroom
             </span>
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-neutral-950 tracking-tight mb-3">
               Contact Our Advisors
@@ -90,43 +134,67 @@ export default function ContactClient() {
                 <span className="text-xs uppercase font-bold tracking-widest text-neutral-300 block mb-1">
                   Private Client Concierge
                 </span>
-                <p className="text-lg font-bold">
-                  Bespoke Acquisition & Sales
+                <h3 className="text-xl sm:text-2xl font-extrabold tracking-tight">
+                  Julian St. Clair
+                </h3>
+                <p className="text-xs text-neutral-300 mt-1 leading-relaxed">
+                  Senior Automotive Advisor &bull; Beverly Hills Showroom
                 </p>
-                <p className="text-xs text-neutral-300 mt-1">
-                  Direct Line: +1 448 226 4666
-                </p>
+                <div className="mt-4 flex items-center gap-2 text-xs font-mono text-neutral-200">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>Available for Consultations</span>
+                </div>
               </div>
             </div>
 
-            {/* Right: Clean Light Form */}
-            <div className="lg:col-span-7 flex flex-col justify-center bg-[#F9FAFB] p-6 sm:p-10 rounded-2xl border border-neutral-200 shadow-sm">
+            {/* Right: Modern Simple Form */}
+            <div className="lg:col-span-7 bg-[#F9FAFB] rounded-2xl p-6 sm:p-10 border border-neutral-200">
               {submitted ? (
-                <div className="p-8 text-center space-y-4">
-                  <div className="w-14 h-14 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-2">
-                    <CheckCircle2 className="w-7 h-7" />
+                <div className="py-12 text-center space-y-4">
+                  <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
+                    <CheckCircle2 className="w-8 h-8" />
                   </div>
-                  <h3 className="font-extrabold text-2xl tracking-tight text-neutral-950">
+                  <h3 className="text-2xl font-extrabold text-neutral-950">
                     Inquiry Received
                   </h3>
                   <p className="text-sm text-neutral-600 max-w-md mx-auto leading-relaxed">
                     Thank you, <span className="text-neutral-950 font-bold">{formData.name}</span>. A Senior Motoring Advisor will reach out via email or phone within 60 minutes.
                   </p>
-                  <button
-                    onClick={() => {
-                      setSubmitted(false);
-                      setFormData({ name: "", email: "", phone: "", message: "" });
-                    }}
-                    className="mt-4 px-6 py-3 rounded-lg bg-neutral-950 text-white font-semibold text-xs uppercase tracking-wider hover:bg-neutral-800 transition-colors"
-                  >
-                    Send Another Message
-                  </button>
+                  
+                  <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+                    <a
+                      href={whatsappHref}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-emerald-600 text-white font-semibold text-xs uppercase tracking-wider hover:bg-emerald-700 transition-colors"
+                    >
+                      <MessageSquare className="w-4 h-4" />
+                      <span>Continue on WhatsApp</span>
+                    </a>
+
+                    <button
+                      onClick={() => {
+                        setSubmitted(false);
+                        setFormData({ name: "", email: "", phone: "", message: "" });
+                      }}
+                      className="w-full sm:w-auto px-6 py-3 rounded-lg bg-neutral-950 text-white font-semibold text-xs uppercase tracking-wider hover:bg-neutral-800 transition-colors"
+                    >
+                      Send Another Message
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-5">
                   <h2 className="text-xl font-bold text-neutral-950">
                     Send an Inquiry
                   </h2>
+
+                  {errorMessage && (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-xs flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 shrink-0" />
+                      <span>{errorMessage}</span>
+                    </div>
+                  )}
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {/* Name */}
@@ -178,11 +246,12 @@ export default function ContactClient() {
                   {/* Message */}
                   <div>
                     <label className="block text-xs font-bold text-neutral-700 mb-1.5 uppercase tracking-wider">
-                      Vehicle or Inquiry Details
+                      Vehicle or Inquiry Details <span className="text-red-500">*</span>
                     </label>
                     <textarea
                       rows={4}
-                      placeholder="Specify the vehicle of interest, trade-in details, or appointment preferences..."
+                      required
+                      placeholder="Specify the vehicle of interest, delivery location, or appointment preferences..."
                       value={formData.message}
                       onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                       className="w-full bg-white border border-neutral-300 rounded-lg px-4 py-3 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-950 transition-colors resize-none"
@@ -193,9 +262,10 @@ export default function ContactClient() {
                   <div className="pt-2">
                     <button
                       type="submit"
-                      className="w-full py-3.5 rounded-lg bg-neutral-950 text-white font-bold text-xs uppercase tracking-widest hover:bg-neutral-800 transition-all shadow-sm"
+                      disabled={submitting}
+                      className="w-full py-3.5 px-6 rounded-lg bg-neutral-950 hover:bg-neutral-800 disabled:opacity-50 text-white font-bold text-xs uppercase tracking-wider transition-colors shadow-sm cursor-pointer"
                     >
-                      Submit Inquiry
+                      {submitting ? "Transmitting..." : "Send Showroom Inquiry"}
                     </button>
                   </div>
                 </form>
@@ -205,139 +275,88 @@ export default function ContactClient() {
         </Container>
       </section>
 
-      {/* ─── 3. HEADQUARTERS & CONTACT INFO ─── */}
-      <section className="py-14 sm:py-20 border-t border-neutral-200 bg-[#F9FAFB]">
+      {/* ─── 3. SHOWROOM LOCATIONS & HOURS ─── */}
+      <section className="py-14 sm:py-16 bg-[#F9FAFB] border-y border-neutral-200">
         <Container>
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
-            {/* Showroom Details */}
-            <div className="lg:col-span-6 space-y-6">
-              <div>
-                <span className="text-xs font-bold uppercase tracking-widest text-neutral-500 block mb-1">
-                  Flagship Showroom
-                </span>
-                <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-neutral-950">
-                  Beverly Hills Gallery
-                </h2>
-                <p className="text-sm text-neutral-600 mt-2 leading-relaxed">
-                  Our premier gallery features a private consultation lounge, delivery bay, and dedicated vehicle display floor.
-                </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="p-6 bg-white rounded-xl border border-neutral-200 space-y-3">
+              <div className="w-10 h-10 rounded-lg bg-neutral-100 flex items-center justify-center text-neutral-900">
+                <MapPin className="w-5 h-5" />
               </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-2">
-                {/* Address */}
-                <div className="p-4 bg-white rounded-xl border border-neutral-200">
-                  <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-neutral-500 mb-1">
-                    <MapPin className="w-4 h-4 text-neutral-800" />
-                    <span>Location</span>
-                  </div>
-                  <p className="text-sm font-semibold text-neutral-900">
-                    450 North Rodeo Drive<br />
-                    Beverly Hills, CA 90210
-                  </p>
-                </div>
-
-                {/* Direct Phone */}
-                <div className="p-4 bg-white rounded-xl border border-neutral-200">
-                  <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-neutral-500 mb-1">
-                    <Phone className="w-4 h-4 text-neutral-800" />
-                    <span>Direct Phone</span>
-                  </div>
-                  <a
-                    href="tel:+14482264666"
-                    className="text-sm font-bold text-neutral-900 hover:text-neutral-600 transition-colors"
-                  >
-                    +1 448 226 4666
-                  </a>
-                  <p className="text-xs text-neutral-500 mt-0.5">
-                    concierge@astonautostores.com
-                  </p>
-                </div>
-              </div>
-
-              {/* Hours */}
-              <div className="p-5 bg-white rounded-xl border border-neutral-200">
-                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-neutral-500 mb-3">
-                  <Clock className="w-4 h-4 text-neutral-800" />
-                  <span>Showroom Hours (PST)</span>
-                </div>
-                <div className="space-y-2 text-xs sm:text-sm">
-                  <div className="flex justify-between border-b border-neutral-100 pb-1.5">
-                    <span className="text-neutral-600">Monday - Friday</span>
-                    <span className="font-semibold text-neutral-950">9:00 AM - 7:00 PM</span>
-                  </div>
-                  <div className="flex justify-between border-b border-neutral-100 pb-1.5">
-                    <span className="text-neutral-600">Saturday</span>
-                    <span className="font-semibold text-neutral-950">10:00 AM - 6:00 PM</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-neutral-600">Sunday</span>
-                    <span className="font-semibold text-neutral-500">By Private Appointment</span>
-                  </div>
-                </div>
-              </div>
+              <h3 className="font-bold text-base text-neutral-950">Showroom Address</h3>
+              <p className="text-xs text-neutral-600 leading-relaxed font-mono">
+                450 North Rodeo Drive<br />
+                Beverly Hills, CA 90210<br />
+                United States
+              </p>
             </div>
 
-            {/* Map / Image preview */}
-            <div className="lg:col-span-6 w-full h-[360px] sm:h-[420px] rounded-2xl overflow-hidden border border-neutral-200 bg-neutral-100 relative shadow-sm">
-              <iframe
-                title="Beverly Hills Showroom Map"
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3304.7738245595697!2d-118.40567792348574!3d34.06883291652431!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x80c2bc04d6d14777%3A0x6b77c5950e417935!2sRodeo%20Dr%2C%20Beverly%20Hills%2C%20CA!5e0!3m2!1sen!2sus!4v1700000000000!5m2!1sen!2sus"
-                width="100%"
-                height="100%"
-                style={{ border: 0 }}
-                allowFullScreen={false}
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-                className="w-full h-full"
-              />
+            <div className="p-6 bg-white rounded-xl border border-neutral-200 space-y-3">
+              <div className="w-10 h-10 rounded-lg bg-neutral-100 flex items-center justify-center text-neutral-900">
+                <Phone className="w-5 h-5" />
+              </div>
+              <h3 className="font-bold text-base text-neutral-950">Direct Contact</h3>
+              <p className="text-xs text-neutral-600 leading-relaxed font-mono">
+                Phone: <a href="tel:+14482264666" className="text-neutral-950 font-bold hover:underline">+1 448 226 4666</a><br />
+                Email: <a href="mailto:concierge@astonautostores.com" className="text-neutral-950 hover:underline">concierge@astonautostores.com</a><br />
+                WhatsApp: +1 448 226 4666
+              </p>
+            </div>
+
+            <div className="p-6 bg-white rounded-xl border border-neutral-200 space-y-3">
+              <div className="w-10 h-10 rounded-lg bg-neutral-100 flex items-center justify-center text-neutral-900">
+                <Clock className="w-5 h-5" />
+              </div>
+              <h3 className="font-bold text-base text-neutral-950">Concierge Hours</h3>
+              <p className="text-xs text-neutral-600 leading-relaxed font-mono">
+                Monday – Friday: 9:00 AM – 7:00 PM PST<br />
+                Saturday: 10:00 AM – 6:00 PM PST<br />
+                Sunday: Private Appointments Only
+              </p>
             </div>
           </div>
         </Container>
       </section>
 
-      {/* ─── 4. FAQ ─── */}
-      <section className="py-14 sm:py-20 bg-white">
-        <Container className="max-w-4xl">
-          <div className="text-center mb-10">
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-neutral-950 tracking-tight">
-              Frequently Asked Questions
-            </h2>
-            <p className="text-xs sm:text-sm text-neutral-600 mt-1">
-              Common inquiries regarding acquisitions, vehicle transport, and financing.
-            </p>
-          </div>
+      {/* ─── 4. ACCORDION FAQS ─── */}
+      <section className="py-16 sm:py-20">
+        <Container>
+          <div className="max-w-2xl mx-auto">
+            <div className="text-center mb-10">
+              <span className="text-xs font-bold uppercase tracking-widest text-neutral-500 block mb-1">
+                Frequently Asked
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-neutral-950 tracking-tight">
+                Common Questions
+              </h2>
+            </div>
 
-          <div className="space-y-3">
-            {faqs.map((faq, index) => {
-              const isOpen = activeFaq === index;
-              return (
+            <div className="space-y-3">
+              {FAQS.map((faq, i) => (
                 <div
-                  key={index}
-                  className="rounded-xl border border-neutral-200 bg-white overflow-hidden shadow-sm"
+                  key={i}
+                  className="rounded-xl border border-neutral-200 overflow-hidden bg-white transition-colors"
                 >
                   <button
-                    onClick={() => toggleFaq(index)}
-                    aria-expanded={isOpen}
-                    className="w-full flex items-center justify-between p-5 text-left focus:outline-none"
+                    onClick={() => toggleFaq(i)}
+                    className="w-full flex items-center justify-between p-4 sm:p-5 text-left font-bold text-sm text-neutral-900 hover:bg-neutral-50 transition-colors cursor-pointer"
                   >
-                    <span className="text-sm sm:text-base font-bold text-neutral-900 pr-4">
-                      {faq.question}
-                    </span>
+                    <span>{faq.question}</span>
                     <ChevronDown
-                      className={`w-4 h-4 text-neutral-500 transition-transform ${
-                        isOpen ? "rotate-180" : ""
+                      className={`w-4 h-4 text-neutral-500 transition-transform duration-200 shrink-0 ml-4 ${
+                        activeFaq === i ? "rotate-180" : ""
                       }`}
                     />
                   </button>
 
-                  {isOpen && (
-                    <div className="px-5 pb-5 text-xs sm:text-sm text-neutral-600 leading-relaxed border-t border-neutral-100 pt-3">
+                  {activeFaq === i && (
+                    <div className="px-4 pb-5 sm:px-5 text-xs sm:text-sm text-neutral-600 leading-relaxed border-t border-neutral-100 pt-3">
                       {faq.answer}
                     </div>
                   )}
                 </div>
-              );
-            })}
+              ))}
+            </div>
           </div>
         </Container>
       </section>

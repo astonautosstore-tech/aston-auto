@@ -1,15 +1,27 @@
 import { MetadataRoute } from "next";
-import { SEED_CARS } from "@/lib/data/seed-cars";
+import { createPublicClient } from "@/lib/supabase/public";
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export const revalidate = 3600;
+
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://astonautostores.com";
+  const publicClient = createPublicClient();
 
-  const carUrls = SEED_CARS.map((car) => ({
-    url: `${baseUrl}/cars/${car.slug}`,
-    lastModified: new Date(),
-    changeFrequency: "weekly" as const,
-    priority: 0.9,
-  }));
+  let carUrls: MetadataRoute.Sitemap = [];
+  try {
+    const { data: cars } = await publicClient
+      .from("cars")
+      .select("slug, updated_at");
+
+    carUrls = (cars || []).map((car: { slug: string; updated_at?: string }) => ({
+      url: `${baseUrl}/cars/${car.slug}`,
+      lastModified: car.updated_at ? new Date(car.updated_at) : new Date(),
+      changeFrequency: "weekly" as const,
+      priority: 0.9,
+    }));
+  } catch {
+    carUrls = [];
+  }
 
   return [
     {
