@@ -1,11 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import SmoothScrollProvider from "@/components/providers/SmoothScrollProvider";
-// import LuxuryCursor from "@/components/ui/LuxuryCursor";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
-import CartDrawer from "@/components/cart/CartDrawer";
-import FlyingCarAnimation from "@/components/cart/FlyingCarAnimation";
 import CookieConsent from "@/components/ui/CookieConsent";
 
 export const metadata: Metadata = {
@@ -55,11 +52,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" data-scroll-behavior="smooth" className="font-sans">
-      <body className="min-h-screen bg-[#050505] text-white selection:bg-[#E10600] selection:text-white relative">
+      <body className="min-h-screen bg-white text-neutral-900 selection:bg-neutral-950 selection:text-white relative">
         <SmoothScrollProvider>
-          {/* <LuxuryCursor /> */}
-          <FlyingCarAnimation />
-          <CartDrawer />
           <CookieConsent />
 
           <div className="flex flex-col min-h-screen">

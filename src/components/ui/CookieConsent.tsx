@@ -3,21 +3,18 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { Cookie, X, ShieldCheck } from "lucide-react";
+import { Cookie, X } from "lucide-react";
 import { soundEngine } from "@/lib/sound";
 
 export default function CookieConsent() {
-  const [mounted, setMounted] = useState(false);
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
     const consent = localStorage.getItem("aston_cookie_consent");
     if (!consent) {
-      // Show banner after brief delay
       const timer = setTimeout(() => {
         setVisible(true);
-      }, 1200);
+      }, 1500);
       return () => clearTimeout(timer);
     }
   }, []);
@@ -34,8 +31,6 @@ export default function CookieConsent() {
     setVisible(false);
   };
 
-  if (!mounted) return null;
-
   return (
     <AnimatePresence>
       {visible && (
@@ -48,19 +43,19 @@ export default function CookieConsent() {
           role="region"
           aria-label="Cookie consent banner"
         >
-          <div className="relative rounded-2xl bg-[#0D0D0D]/95 backdrop-blur-2xl border border-white/15 p-5 sm:p-6 shadow-[0_20px_50px_rgba(0,0,0,0.85)] space-y-4">
+          <div className="relative rounded-2xl bg-white/95 backdrop-blur-xl border border-neutral-300 p-5 sm:p-6 shadow-[0_20px_50px_rgba(0,0,0,0.15)] space-y-4 text-neutral-900">
             
             {/* Top row with icon & close */}
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-[#E10600]/15 text-[#E10600] flex items-center justify-center shrink-0">
+                <div className="w-8 h-8 rounded-lg bg-neutral-100 text-neutral-900 flex items-center justify-center shrink-0">
                   <Cookie className="w-4 h-4" />
                 </div>
                 <div>
-                  <h4 className="font-display font-bold text-sm text-white uppercase tracking-tight">
+                  <h4 className="font-display font-bold text-sm text-neutral-950 uppercase tracking-tight">
                     Cookie Preferences
                   </h4>
-                  <span className="text-[10px] font-mono text-[#8A8A8A] uppercase">
+                  <span className="text-[10px] font-mono text-neutral-500 uppercase">
                     Privacy &amp; Data Control
                   </span>
                 </div>
@@ -68,7 +63,7 @@ export default function CookieConsent() {
 
               <button
                 onClick={handleDecline}
-                className="text-[#8A8A8A] hover:text-white transition-colors p-1 -mr-1"
+                className="text-neutral-400 hover:text-neutral-900 transition-colors p-1 -mr-1"
                 aria-label="Dismiss cookie banner"
               >
                 <X className="w-4 h-4" />
@@ -76,9 +71,9 @@ export default function CookieConsent() {
             </div>
 
             {/* Description */}
-            <p className="text-xs text-[#A0A0A0] leading-relaxed">
-              We use essential and analytics cookies to personalize your supercar browsing experience, remember your favorite vehicles, and measure gallery engagement. Review our{" "}
-              <Link href="/privacy" className="text-white underline hover:text-[#E10600] transition-colors">
+            <p className="text-xs text-neutral-600 leading-relaxed">
+              We use essential and analytics cookies to personalize your browsing experience and measure inventory engagement. Review our{" "}
+              <Link href="/privacy" className="text-neutral-950 underline hover:text-neutral-600 transition-colors font-medium">
                 Privacy Policy
               </Link>{" "}
               for complete details.
@@ -88,14 +83,14 @@ export default function CookieConsent() {
             <div className="flex items-center gap-2.5 pt-1">
               <button
                 onClick={handleAccept}
-                className="flex-1 py-2.5 px-4 rounded-lg bg-white text-black font-bold text-xs uppercase tracking-wider hover:bg-neutral-200 active:scale-95 transition-all cursor-pointer shadow-md"
+                className="flex-1 py-2.5 px-4 rounded-lg bg-neutral-950 text-white font-bold text-xs uppercase tracking-wider hover:bg-neutral-800 active:scale-95 transition-all cursor-pointer shadow-sm"
               >
                 Accept All
               </button>
 
               <button
                 onClick={handleDecline}
-                className="flex-1 py-2.5 px-4 rounded-lg bg-white/5 hover:bg-white/10 border border-white/15 text-white/90 hover:text-white font-medium text-xs uppercase tracking-wider active:scale-95 transition-all cursor-pointer"
+                className="flex-1 py-2.5 px-4 rounded-lg bg-white border border-neutral-300 text-neutral-700 hover:bg-neutral-50 font-medium text-xs uppercase tracking-wider active:scale-95 transition-all cursor-pointer"
               >
                 Refuse
               </button>

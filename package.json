@@ -12,8 +12,6 @@
     "@hookform/resolvers": "^6.0.0",
     "@supabase/supabase-js": "^2.118.0",
     "@tailwindcss/postcss": "^4.3.3",
-    "@types/canvas-confetti": "^1.9.0",
-    "canvas-confetti": "^1.9.4",
     "clsx": "^2.1.1",
     "framer-motion": "^14.4.0",
     "gsap": "^3.15.0",
