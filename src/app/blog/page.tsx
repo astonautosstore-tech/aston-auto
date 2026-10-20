@@ -2,8 +2,8 @@ import { Metadata } from "next";
 import BlogClient from "@/components/blog/BlogClient";
 
 export const metadata: Metadata = {
-  title: "Automotive Insights & Tips | Aston Auto",
-  description: "Insights, stories, and trends from the world of high-end automobiles, supercars, and automotive engineering.",
+  title: "Automotive News, Insights & Buying Guides | Aston",
+  description: "Insights, buying guides, and engineering trends from the world of luxury, exotic, and high-performance automobiles.",
 };
 
 export default function BlogPage() {

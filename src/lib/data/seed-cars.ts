@@ -1,38 +1,7 @@
 import { Car, SiteSettings } from "@/types/database";
 
 export const SEED_CARS: Car[] = [
-  {
-    id: "col-audi-q7-2023",
-    title: "Audi Q7",
-    slug: "audi-q7",
-    brand: "Audi",
-    model: "Q7 55 TFSI quattro",
-    year: 2023,
-    price: 70000,
-    discount_price: null,
-    mileage: 4200,
-    transmission: "Automatic",
-    fuel_type: "Petrol",
-    body_type: "SUV",
-    color: "Glacier White Metallic",
-    interior_color: "Okapi Brown Valcona Leather",
-    condition: "Certified Pre-Owned",
-    engine: "3.0L Turbocharged V6",
-    acceleration_0_100: 5.6,
-    top_speed_kmh: 250,
-    horsepower: 335,
-    torque_nm: 500,
-    description: "The Audi Q7 pairs three rows of refined luxury with quattro all-wheel-drive capability and advanced MMI dual-touchscreen infotainment.",
-    features: ["quattro All-Wheel Drive", "Bang & Olufsen 3D Sound", "Virtual Cockpit Plus", "Panoramic Sunroof"],
-    status: "available",
-    stock_quantity: 1,
-    is_featured: true,
-    hero_image: "https://images.unsplash.com/photo-1541348263662-e0c8de4259ba?auto=format&fit=crop&w=1200&q=80",
-    images: [
-      "https://images.unsplash.com/photo-1541348263662-e0c8de4259ba?auto=format&fit=crop&w=1200&q=80"
-    ],
-    created_at: new Date().toISOString()
-  },
+  
   {
     id: "col-lambo-urus-2023",
     title: "Lamborghini Urus",
@@ -783,15 +752,15 @@ export const SEED_CARS: Car[] = [
 
 export const INITIAL_SITE_SETTINGS: SiteSettings = {
   id: 1,
-  company_name: "Aston Auto Stores",
+  company_name: "Aston",
   tagline: "Curators of Extraordinary Motoring",
-  phone: "+234 812 345 6789",
-  whatsapp: "+234 812 345 6789",
+  phone: "+1 448 226 4666",
+  whatsapp: "+1 448 226 4666",
   email: "concierge@astonautostores.com",
-  address: "14 Alexander Avenue, Ikoyi, Lagos, Nigeria",
+  address: "450 North Rodeo Drive, Beverly Hills, CA 90210",
   showroom_hours: "Monday – Saturday: 9:00 AM – 7:00 PM (By Appointment)",
   deposit_percentage: 10,
-  flat_delivery_fee: 250000,
+  flat_delivery_fee: 1500,
   social_links: {
     instagram: "https://instagram.com/astonautostores",
     twitter: "https://twitter.com/astonautostores",
@@ -799,5 +768,5 @@ export const INITIAL_SITE_SETTINGS: SiteSettings = {
     linkedin: "https://linkedin.com/company/aston-auto-stores",
   },
   hero_headline: "The Apex of Automotive Artistry",
-  hero_subheadline: "West Africa's most prestigious portfolio of curated supercars and bespoke grand tourers.",
+  hero_subheadline: "North America's premier curated portfolio of supercars and bespoke grand tourers.",
 };

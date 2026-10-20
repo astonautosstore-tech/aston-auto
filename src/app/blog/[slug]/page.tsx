@@ -21,12 +21,12 @@ export async function generateMetadata({ params }: BlogPostPageProps): Promise<M
 
   if (!article) {
     return {
-      title: "Article Not Found | Aston Auto",
+      title: "Article Not Found | Aston",
     };
   }
 
   return {
-    title: `${article.title} | Aston Auto Insights`,
+    title: `${article.title} | Aston Journal`,
     description: article.excerpt,
     openGraph: {
       title: article.title,

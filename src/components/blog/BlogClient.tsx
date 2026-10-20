@@ -1,133 +1,177 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { Search, Calendar, Clock, ArrowRight, BookOpen } from "lucide-react";
 import { BLOG_ARTICLES, BlogArticle } from "@/lib/data/blog-articles";
-import { soundEngine } from "@/lib/sound";
+import Container from "@/components/ui/Container";
 import CarCtaBanner from "@/components/blog/CarCtaBanner";
+import { storeApi } from "@/lib/supabase/client";
 
 const CATEGORIES = [
   "All",
-  "Buying Tips",
+  "Expert Advice",
+  "Buyer's Guide",
   "Financing",
   "Technology",
-  "Maintenance",
-  "Leadership",
+  "Safety Tips",
 ] as const;
 
 export default function BlogClient() {
+  const [articles, setArticles] = useState<BlogArticle[]>(BLOG_ARTICLES);
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
-  const [visibleCount, setVisibleCount] = useState<number>(4);
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [visibleCount, setVisibleCount] = useState<number>(6);
 
-  const featuredArticle = BLOG_ARTICLES.find((a) => a.featured) || BLOG_ARTICLES[0];
-  const gridArticles = BLOG_ARTICLES.filter((a) => a.slug !== featuredArticle.slug);
+  useEffect(() => {
+    async function loadLiveArticles() {
+      try {
+        const live = await storeApi.getArticles();
+        if (live && live.length > 0) {
+          setArticles(live);
+        }
+      } catch (err) {
+        console.warn("Failed to load live articles:", err);
+      }
+    }
 
-  const filteredArticles = gridArticles.filter((article) => {
-    if (selectedCategory === "All") return true;
-    if (selectedCategory === "Buying Tips") return article.category === "Buyer's Guide" || article.category === "Expert Advice";
-    return article.category.toLowerCase().includes(selectedCategory.toLowerCase());
-  });
+    loadLiveArticles();
+
+    const handleUpdate = () => {
+      loadLiveArticles();
+    };
+
+    window.addEventListener("aston_articles_updated", handleUpdate);
+    return () => window.removeEventListener("aston_articles_updated", handleUpdate);
+  }, []);
+
+  const featuredArticle = articles.find((a) => a.featured) || articles[0];
+  const gridArticles = articles.filter((a) => a.slug !== featuredArticle?.slug);
+
+  const filteredArticles = useMemo(() => {
+    return gridArticles.filter((article) => {
+      // Category match
+      let matchCategory = true;
+      if (selectedCategory !== "All") {
+        matchCategory = article.category.toLowerCase().includes(selectedCategory.toLowerCase());
+      }
+
+      // Search query match
+      let matchSearch = true;
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        matchSearch =
+          article.title.toLowerCase().includes(q) ||
+          article.excerpt.toLowerCase().includes(q) ||
+          article.category.toLowerCase().includes(q);
+      }
+
+      return matchCategory && matchSearch;
+    });
+  }, [gridArticles, selectedCategory, searchQuery]);
 
   const displayedArticles = filteredArticles.slice(0, visibleCount);
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white pt-28 sm:pt-36 pb-16 selection:bg-[#E10600] selection:text-white">
-      <div className="max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-8">
-        
-        {/* ─── 1. TOP HEADER SECTION ─── */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-10 sm:pb-14 border-b border-white/[0.08]">
-          <div>
-            <h1 className="font-display font-black text-4xl sm:text-5xl md:text-6xl uppercase tracking-tight text-white leading-[1.08]">
-              Automotive <br />
-              Insights &amp; Tips
+    <div className="min-h-screen bg-white text-neutral-900 pt-20 sm:pt-24">
+      {/* ─── 1. EDITORIAL HEADER BANNER ─── */}
+      <section className="bg-[#F9FAFB] border-b border-neutral-200 py-12 sm:py-16">
+        <Container>
+          <div className="max-w-3xl">
+            <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-neutral-500 mb-2">
+              <BookOpen className="w-3.5 h-3.5 text-neutral-800" />
+              <span>Dealership Journal &amp; Market Intelligence</span>
+            </div>
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-neutral-950 tracking-tight mb-3">
+              Automotive News &amp; Insights
             </h1>
+            <p className="text-sm sm:text-base text-neutral-600 leading-relaxed">
+              Explore market trends, supercar engineering analysis, pre-owned buyer guides, and ownership advice authored by our automotive specialists.
+            </p>
           </div>
-          <p className="text-xs sm:text-sm text-[#8A8A8A] max-w-xs md:text-right leading-relaxed font-sans">
-            Insights, stories, and trends from the world of high-end automobiles.
-          </p>
-        </div>
+        </Container>
+      </section>
 
-        {/* ─── 2. FEATURED SPLIT HERO CARD ─── */}
-        <div className="mt-8 sm:mt-12">
-          <Link
-            href={`/blog/${featuredArticle.slug}`}
-            onClick={() => soundEngine.playHoverTick()}
-            className="group relative block rounded-2xl sm:rounded-3xl overflow-hidden border border-white/10 bg-[#0A0A0A] hover:border-white/30 transition-all duration-500 shadow-2xl"
-          >
-            {/* Split Duo Visual Layout */}
-            <div className="grid grid-cols-1 md:grid-cols-2 relative aspect-[16/10] sm:aspect-[21/9] w-full">
-              {/* Left Panel */}
-              <div className="relative h-full w-full overflow-hidden border-b md:border-b-0 md:border-r border-white/10">
+      {/* ─── 2. FEATURED ARTICLE HERO CARD ─── */}
+      {featuredArticle && (
+        <section className="py-10 sm:py-14 bg-white border-b border-neutral-100">
+          <Container>
+            <span className="text-xs font-bold uppercase tracking-widest text-neutral-500 block mb-4">
+              Featured Story
+            </span>
+
+            <Link
+              href={`/blog/${featuredArticle.slug}`}
+              className="group grid grid-cols-1 lg:grid-cols-12 gap-8 items-center bg-[#F9FAFB] border border-neutral-200 rounded-2xl p-6 sm:p-8 hover:shadow-lg transition-all duration-300"
+            >
+              {/* Photo */}
+              <div className="lg:col-span-7 relative aspect-[16/10] sm:aspect-[16/9] w-full rounded-xl overflow-hidden bg-neutral-200">
                 <Image
                   src={featuredArticle.coverImage}
                   alt={featuredArticle.title}
                   fill
                   priority
-                  sizes="(max-width: 768px) 100vw, 50vw"
-                  className="object-cover object-center group-hover:scale-105 transition-transform duration-700 brightness-90 group-hover:brightness-100"
+                  sizes="(max-width: 1024px) 100vw, 60vw"
+                  className="object-cover object-center group-hover:scale-105 transition-transform duration-700"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/20" />
+                <div className="absolute top-4 left-4">
+                  <span className="px-3 py-1 rounded-md bg-neutral-950 text-white text-[11px] font-bold uppercase tracking-wider shadow-md">
+                    {featuredArticle.category}
+                  </span>
+                </div>
               </div>
 
-              {/* Right Panel with subtle color harmony */}
-              <div className="relative h-full w-full overflow-hidden hidden md:block">
-                <Image
-                  src="https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1200&q=80"
-                  alt="Drivetrain comparison"
-                  fill
-                  sizes="50vw"
-                  className="object-cover object-center group-hover:scale-105 transition-transform duration-700 brightness-75 group-hover:brightness-90 hue-rotate-15"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
-              </div>
+              {/* Text Info */}
+              <div className="lg:col-span-5 flex flex-col justify-center space-y-4">
+                <div className="flex items-center gap-3 text-xs text-neutral-500 font-medium">
+                  <span className="flex items-center gap-1">
+                    <Calendar className="w-3.5 h-3.5" />
+                    {featuredArticle.date}
+                  </span>
+                  <span>•</span>
+                  <span className="flex items-center gap-1">
+                    <Clock className="w-3.5 h-3.5" />
+                    {featuredArticle.readTime}
+                  </span>
+                </div>
 
-              {/* Badge Top Left */}
-              <div className="absolute top-6 left-6 z-20">
-                <span className="px-3.5 py-1.5 rounded-full bg-white text-black text-[11px] font-bold uppercase tracking-wider shadow-lg">
-                  {featuredArticle.category}
-                </span>
-              </div>
-
-              {/* Title & Date Bottom Left Overlay */}
-              <div className="absolute bottom-6 left-6 right-6 md:right-auto md:max-w-xl z-20">
-                <h2 className="font-display font-bold text-xl sm:text-2xl md:text-3xl text-white group-hover:text-[#E10600] transition-colors leading-tight mb-2">
+                <h2 className="text-2xl sm:text-3xl font-extrabold text-neutral-950 group-hover:text-neutral-700 transition-colors leading-tight">
                   {featuredArticle.title}
                 </h2>
-                <span className="font-mono text-xs text-[#8A8A8A]">
-                  {featuredArticle.date}
-                </span>
+
+                <p className="text-xs sm:text-sm text-neutral-600 leading-relaxed line-clamp-3">
+                  {featuredArticle.excerpt}
+                </p>
+
+                <div className="pt-2">
+                  <span className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold text-neutral-950 group-hover:gap-3 transition-all">
+                    <span>Read Full Article</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </span>
+                </div>
               </div>
-            </div>
-          </Link>
-        </div>
+            </Link>
+          </Container>
+        </section>
+      )}
 
-        {/* ─── 3. OUR LATEST NEWS & ARTICLE HEADER + CATEGORY TABS ─── */}
-        <div className="mt-16 sm:mt-24 pt-8">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-8">
-            <div>
-              <h2 className="font-display font-black text-2xl sm:text-3xl md:text-4xl uppercase tracking-tight text-white leading-tight">
-                Our Latest <br />
-                News &amp; Article
-              </h2>
-            </div>
-
+      {/* ─── 3. CATEGORY TABS & SEARCH BAR ─── */}
+      <section className="py-8 bg-white">
+        <Container>
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#F9FAFB] p-3 sm:p-4 rounded-xl border border-neutral-200">
             {/* Filter Pills */}
-            <div className="flex flex-wrap items-center gap-2 sm:gap-4 overflow-x-auto pb-2 scrollbar-none">
+            <div className="flex flex-wrap items-center gap-2">
               {CATEGORIES.map((cat) => {
                 const isActive = selectedCategory === cat;
                 return (
                   <button
                     key={cat}
-                    onClick={() => {
-                      soundEngine.playHoverTick();
-                      setSelectedCategory(cat);
-                    }}
-                    className={`text-xs uppercase tracking-wider font-semibold transition-all py-1.5 px-3 rounded-md cursor-pointer ${
+                    onClick={() => setSelectedCategory(cat)}
+                    className={`text-xs sm:text-sm font-semibold transition-all py-2 px-3.5 rounded-lg cursor-pointer ${
                       isActive
-                        ? "text-white bg-white/10 border border-white/20"
-                        : "text-[#777] hover:text-white hover:bg-white/[0.04]"
+                        ? "bg-neutral-950 text-white shadow-sm"
+                        : "bg-white text-neutral-700 hover:bg-neutral-100 border border-neutral-200"
                     }`}
                   >
                     {cat}
@@ -135,71 +179,126 @@ export default function BlogClient() {
                 );
               })}
             </div>
-          </div>
 
-          {/* ─── 4. 2x2 ARTICLE GRID ─── */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
-            {displayedArticles.map((article, idx) => (
-              <motion.article
-                key={article.slug}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: idx * 0.05 }}
+            {/* Quick Search */}
+            <div className="relative min-w-[240px] sm:min-w-[280px]">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+              <input
+                type="text"
+                placeholder="Search articles..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 text-xs sm:text-sm bg-white rounded-lg border border-neutral-300 text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-950"
+              />
+            </div>
+          </div>
+        </Container>
+      </section>
+
+      {/* ─── 4. ARTICLES 3-COLUMN GRID ─── */}
+      <section className="py-8 sm:py-12">
+        <Container>
+          {displayedArticles.length === 0 ? (
+            <div className="py-16 text-center bg-[#F9FAFB] rounded-2xl border border-dashed border-neutral-300 space-y-3">
+              <p className="text-base font-semibold text-neutral-800">
+                No articles matched your criteria.
+              </p>
+              <p className="text-xs text-neutral-500">
+                Try selecting &ldquo;All&rdquo; or clearing your search query.
+              </p>
+              <button
+                onClick={() => {
+                  setSelectedCategory("All");
+                  setSearchQuery("");
+                }}
+                className="mt-2 px-4 py-2 bg-neutral-950 text-white text-xs font-semibold rounded-lg hover:bg-neutral-800"
               >
-                <Link
-                  href={`/blog/${article.slug}`}
-                  onClick={() => soundEngine.playHoverTick()}
-                  className="group relative block aspect-[16/11] sm:aspect-[16/10] w-full rounded-2xl sm:rounded-3xl overflow-hidden border border-white/10 bg-[#0A0A0A] hover:border-white/30 transition-all duration-500 shadow-xl"
+                Reset Filters
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+              {displayedArticles.map((article) => (
+                <article
+                  key={article.slug}
+                  className="group flex flex-col bg-white rounded-xl border border-neutral-200 overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1"
                 >
-                  {/* Full Cover Image */}
-                  <Image
-                    src={article.coverImage}
-                    alt={article.title}
-                    fill
-                    sizes="(max-width: 768px) 100vw, 50vw"
-                    className="object-cover object-center group-hover:scale-105 transition-transform duration-700"
-                  />
-                  {/* Dark gradient for legibility */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/50 to-black/20" />
+                  <Link href={`/blog/${article.slug}`} className="block">
+                    {/* Cover Image */}
+                    <div className="relative aspect-[16/10] w-full overflow-hidden bg-neutral-100">
+                      <Image
+                        src={article.coverImage}
+                        alt={article.title}
+                        fill
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                        className="object-cover object-center group-hover:scale-105 transition-transform duration-500"
+                      />
 
-                  {/* Category Badge top-left */}
-                  <div className="absolute top-5 left-5 z-20">
-                    <span className="px-3 py-1 rounded-full bg-white text-black text-[10px] sm:text-[11px] font-bold uppercase tracking-wider shadow-md">
-                      {article.category}
-                    </span>
-                  </div>
+                      {/* Category Badge */}
+                      <div className="absolute top-3 left-3">
+                        <span className="px-2.5 py-1 rounded-md bg-black/75 backdrop-blur-md text-white text-[11px] font-semibold">
+                          {article.category}
+                        </span>
+                      </div>
+                    </div>
+                  </Link>
 
-                  {/* Title & Date bottom */}
-                  <div className="absolute bottom-5 left-5 right-5 z-20">
-                    <h3 className="font-display font-bold text-base sm:text-lg md:text-xl text-white group-hover:text-[#E10600] transition-colors leading-snug mb-1.5">
-                      {article.title}
-                    </h3>
-                    <span className="font-mono text-xs text-[#8A8A8A]">
-                      {article.date}
-                    </span>
+                  {/* Body Content */}
+                  <div className="flex flex-col flex-1 p-5">
+                    {/* Meta Info */}
+                    <div className="flex items-center gap-2 text-xs text-neutral-500 mb-2">
+                      <span className="flex items-center gap-1">
+                        <Calendar className="w-3 h-3 text-neutral-400" />
+                        {article.date}
+                      </span>
+                      <span>•</span>
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-3 h-3 text-neutral-400" />
+                        {article.readTime}
+                      </span>
+                    </div>
+
+                    {/* Headline */}
+                    <Link href={`/blog/${article.slug}`}>
+                      <h3 className="text-base sm:text-lg font-bold text-neutral-950 group-hover:text-neutral-700 transition-colors leading-snug line-clamp-2 mb-2">
+                        {article.title}
+                      </h3>
+                    </Link>
+
+                    {/* Excerpt */}
+                    <p className="text-xs text-neutral-600 leading-relaxed line-clamp-3 mb-5">
+                      {article.excerpt}
+                    </p>
+
+                    {/* Footer link */}
+                    <div className="mt-auto pt-4 border-t border-neutral-100">
+                      <Link
+                        href={`/blog/${article.slug}`}
+                        className="inline-flex items-center gap-1.5 text-xs font-bold text-neutral-950 group-hover:gap-2 transition-all"
+                      >
+                        <span>Read Full Story</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </Link>
+                    </div>
                   </div>
-                </Link>
-              </motion.article>
-            ))}
-          </div>
+                </article>
+              ))}
+            </div>
+          )}
 
           {/* Load More Button */}
           {visibleCount < filteredArticles.length && (
             <div className="text-center mt-12 sm:mt-16">
               <button
-                onClick={() => {
-                  soundEngine.playHoverTick();
-                  setVisibleCount((prev) => prev + 2);
-                }}
-                className="inline-block px-7 py-3 rounded-full bg-white text-black font-bold text-xs uppercase tracking-widest hover:bg-neutral-200 transition-all shadow-md hover:scale-105 active:scale-95 cursor-pointer"
+                onClick={() => setVisibleCount((prev) => prev + 3)}
+                className="px-8 py-3.5 rounded-xl bg-neutral-950 hover:bg-neutral-800 text-white font-bold text-xs uppercase tracking-wider shadow-sm transition-all"
               >
-                Load More
+                Load More Articles
               </button>
             </div>
           )}
-        </div>
-
-      </div>
+        </Container>
+      </section>
 
       {/* ─── 5. CAR CTA BANNER ─── */}
       <CarCtaBanner />

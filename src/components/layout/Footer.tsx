@@ -1,62 +1,78 @@
 "use client";
 
-import { useRef } from "react";
 import Link from "next/link";
-import { motion, useInView } from "framer-motion";
-import Container from "@/components/ui/Container";
-
-const wordmark = "ASTON AUTO";
+import { Phone, Mail, MapPin } from "lucide-react";
 
 export default function Footer() {
-  const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, amount: 0.1 });
-
   return (
-    <footer
-      ref={ref}
-      className="w-full bg-[#050505] text-white border-t border-white/10 relative overflow-hidden pt-20 sm:pt-28 pb-6 select-none"
-      role="contentinfo"
-    >
-      <Container>
-        {/* Top: Tagline (Left) & Nav Columns (Right) */}
-        <div className="flex flex-col lg:flex-row items-start lg:items-start justify-between gap-12 lg:gap-16 pb-16 sm:pb-24">
+    <footer className="w-full bg-[#FAFAFA] border-t border-neutral-200 text-[#0A0A0A] overflow-hidden selection:bg-black selection:text-white">
+      {/* Upper Footer: Tagline & Links */}
+      <div className="max-w-[1440px] mx-auto px-6 sm:px-10 lg:px-16 pt-16 sm:pt-20 pb-12 sm:pb-16">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-start">
           
-          {/* Left: Tagline */}
-          <div className="max-w-md sm:max-w-lg">
-            <h2 className="font-display font-bold text-3xl sm:text-4xl md:text-[2.6rem] uppercase tracking-tight text-white leading-[1.15]">
+          {/* Left Column: Big Brand Statement & Contact */}
+          <div className="lg:col-span-5 space-y-6">
+            <h3 className="font-display font-black text-2xl sm:text-3xl md:text-4xl uppercase tracking-tight text-black leading-tight [text-wrap:balance]">
               Making your car-buying <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-white/90 to-[#8A8A8A]">
-                experience transparent.
-              </span>
-            </h2>
+              <span className="text-neutral-500">experience transparent.</span>
+            </h3>
+            
+            <p className="text-xs sm:text-sm text-neutral-600 max-w-md leading-relaxed font-sans">
+              Founded on the principle of absolute clarity. From documented DME telemetry to enclosed 
+              doorstep delivery across North America, we curate automotive perfection.
+            </p>
+
+            <div className="pt-2 space-y-2.5 text-xs font-mono text-neutral-700">
+              <div className="flex items-center gap-2.5">
+                <Phone className="w-4 h-4 text-black" />
+                <a href="tel:+14482264666" className="font-bold hover:underline">
+                  +1 448 226 4666
+                </a>
+              </div>
+              <div className="flex items-center gap-2.5">
+                <Mail className="w-4 h-4 text-black" />
+                <a href="mailto:concierge@astonautostores.com" className="hover:underline">
+                  concierge@astonautostores.com
+                </a>
+              </div>
+              <div className="flex items-center gap-2.5">
+                <MapPin className="w-4 h-4 text-black" />
+                <span>Miami Beach &bull; Beverly Hills &bull; Manhattan</span>
+              </div>
+            </div>
           </div>
 
-          {/* Right: 3 Nav Columns */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-10 sm:gap-16 text-xs w-full lg:w-auto">
+          {/* Right Columns: 3 Navigation Lists */}
+          <div className="lg:col-span-7 grid grid-cols-2 sm:grid-cols-3 gap-8 sm:gap-10 text-xs font-sans">
             
             {/* /Main Pages */}
             <div className="space-y-4">
-              <span className="font-mono text-[#8A8A8A] text-xs font-medium block">
+              <span className="font-mono text-neutral-400 text-xs font-bold uppercase tracking-wider block">
                 /Main Pages
               </span>
-              <ul className="space-y-3 font-medium">
+              <ul className="space-y-3 font-medium text-neutral-700">
                 <li>
-                  <Link href="/" className="text-white/80 hover:text-white transition-colors">
+                  <Link href="/" className="hover:text-black transition-colors">
                     Home
                   </Link>
                 </li>
                 <li>
-                  <Link href="/inventory" className="text-white/80 hover:text-white transition-colors">
+                  <Link href="/inventory" className="hover:text-black transition-colors">
                     Inventory
                   </Link>
                 </li>
                 <li>
-                  <Link href="/blog" className="text-white/80 hover:text-white transition-colors">
+                  <Link href="/blog" className="hover:text-black transition-colors">
                     Blog
                   </Link>
                 </li>
                 <li>
-                  <Link href="/contact" className="text-white/80 hover:text-white transition-colors">
+                  <Link href="/about" className="hover:text-black transition-colors">
+                    About
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/contact" className="hover:text-black transition-colors">
                     Contact
                   </Link>
                 </li>
@@ -65,28 +81,28 @@ export default function Footer() {
 
             {/* /Social */}
             <div className="space-y-4">
-              <span className="font-mono text-[#8A8A8A] text-xs font-medium block">
+              <span className="font-mono text-neutral-400 text-xs font-bold uppercase tracking-wider block">
                 /Social
               </span>
-              <ul className="space-y-3 font-medium">
+              <ul className="space-y-3 font-medium text-neutral-700">
                 <li>
-                  <a href="https://twitter.com" target="_blank" rel="noreferrer" className="text-white/80 hover:text-white transition-colors">
-                    X
+                  <a href="https://twitter.com" target="_blank" rel="noreferrer" className="hover:text-black transition-colors">
+                    X (Twitter)
                   </a>
                 </li>
                 <li>
-                  <a href="https://instagram.com" target="_blank" rel="noreferrer" className="text-white/80 hover:text-white transition-colors">
+                  <a href="https://instagram.com" target="_blank" rel="noreferrer" className="hover:text-black transition-colors">
                     Instagram
                   </a>
                 </li>
                 <li>
-                  <a href="https://linkedin.com" target="_blank" rel="noreferrer" className="text-white/80 hover:text-white transition-colors">
-                    Linkedin
+                  <a href="https://linkedin.com" target="_blank" rel="noreferrer" className="hover:text-black transition-colors">
+                    LinkedIn
                   </a>
                 </li>
                 <li>
-                  <a href="https://facebook.com" target="_blank" rel="noreferrer" className="text-white/80 hover:text-white transition-colors">
-                    Facebook
+                  <a href="https://youtube.com" target="_blank" rel="noreferrer" className="hover:text-black transition-colors">
+                    YouTube
                   </a>
                 </li>
               </ul>
@@ -94,54 +110,45 @@ export default function Footer() {
 
             {/* /Utility */}
             <div className="space-y-4 col-span-2 sm:col-span-1">
-              <span className="font-mono text-[#8A8A8A] text-xs font-medium block">
+              <span className="font-mono text-neutral-400 text-xs font-bold uppercase tracking-wider block">
                 /Utility
               </span>
-              <ul className="space-y-3 font-medium">
+              <ul className="space-y-3 font-medium text-neutral-700">
                 <li>
-                  <Link href="/privacy" className="text-white/80 hover:text-white transition-colors">
+                  <Link href="/privacy" className="hover:text-black transition-colors">
                     Privacy Policy
                   </Link>
                 </li>
                 <li>
-                  <Link href="/terms" className="text-white/80 hover:text-white transition-colors">
+                  <Link href="/terms" className="hover:text-black transition-colors">
                     Terms &amp; Conditions
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/contact" className="hover:text-black transition-colors">
+                    Support Desk
                   </Link>
                 </li>
               </ul>
             </div>
 
           </div>
+
         </div>
 
-        {/* Middle: Copyright bar */}
-        <div className="pt-8 pb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-xs text-[#777] font-mono">
-          <span>&copy; {new Date().getFullYear()} Aston Auto. All rights reserved.</span>
-          <span>West Africa &bull; North America &bull; Europe</span>
+        {/* Legal Micro-Row */}
+        <div className="mt-14 pt-8 border-t border-neutral-200 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-mono text-neutral-500">
+          <p>&copy; {new Date().getFullYear()} Aston Auto. All Rights Reserved.</p>
+          <p>Curators of Extraordinary Motoring &bull; United States</p>
         </div>
+      </div>
 
-        {/* Bottom: Giant Chrome Wordmark */}
-        <div className="w-full overflow-hidden pt-4 pb-2 text-center pointer-events-none select-none">
-          <div className="flex items-center justify-center overflow-hidden tracking-tighter">
-            {wordmark.split("").map((letter, i) => (
-              <motion.span
-                key={i}
-                initial={{ y: "80%", opacity: 0 }}
-                animate={inView ? { y: 0, opacity: 1 } : {}}
-                transition={{ delay: 0.03 * i + 0.1, duration: 0.8, ease: [0.16, 1, 0.3, 1] as const }}
-                className="font-display font-black leading-none inline-block text-[14vw] sm:text-[15vw] drop-shadow-sm"
-                style={{
-                  background: "linear-gradient(180deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0.02) 100%)",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                }}
-              >
-                {letter === " " ? "\u00A0" : letter}
-              </motion.span>
-            ))}
-          </div>
-        </div>
-      </Container>
+      {/* Massive Brand Wordmark in Monochrome Light Style */}
+      <div className="relative w-full overflow-hidden select-none pointer-events-none -mb-4 sm:-mb-8 md:-mb-12">
+        <h2 className="font-display font-black text-[clamp(4.5rem,18vw,19rem)] tracking-tighter text-center leading-none text-neutral-200/60 uppercase">
+          Aston
+        </h2>
+      </div>
     </footer>
   );
 }

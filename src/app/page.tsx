@@ -1,58 +1,32 @@
-import HeroCinematic from "@/components/home/HeroCinematic";
+import HeroCarCarousel from "@/components/home/HeroCarCarousel";
 import BrandMarquee from "@/components/home/BrandMarquee";
-import BrandStatement from "@/components/home/BrandStatement";
-import ShowroomSplit from "@/components/home/ShowroomSplit";
-import StackedFeaturedCars from "@/components/home/StackedFeaturedCars";
-import WhyChooseUs from "@/components/home/WhyChooseUs";
-import Testimonials from "@/components/home/Testimonials";
-import PromoCards from "@/components/home/PromoCards";
-import PeopleBehindUs from "@/components/home/PeopleBehindUs";
-import FutureOnDisplay from "@/components/home/FutureOnDisplay";
-import FaqSection from "@/components/home/FaqSection";
-import NewsArticles from "@/components/home/NewsArticles";
-import ClosingCta from "@/components/home/ClosingCta";
+import HomeInventoryGrid from "@/components/home/HomeInventoryGrid";
+import HomeTrustPillars from "@/components/home/HomeTrustPillars";
+import HomeContactBanner from "@/components/home/HomeContactBanner";
+
+export const metadata = {
+  title: "Aston | Premier Luxury & Exotic Automotive Dealership",
+  description:
+    "Explore our verified inventory of luxury, exotic, and performance vehicles. Nationwide enclosed delivery, clean titles, and tailored financing. Contact our Beverly Hills showroom at +1 448 226 4666.",
+};
 
 export default function HomePage() {
   return (
-    <div className="flex flex-col w-full bg-[#050505]">
-      {/* 1. Hero */}
-      <HeroCinematic />
+    <main className="flex flex-col w-full bg-white text-neutral-900">
+      {/* 1. Hero: Car Carousel Slider */}
+      <HeroCarCarousel />
 
-      {/* 2. Brand Logo Marquee */}
+      {/* 2. Official Brand Logos Marquee */}
       <BrandMarquee />
 
-      {/* 3. Brand Statement + Stats */}
-      <BrandStatement />
+      {/* 3. Dealership Inventory Grid (Filters, Search, USD Pricing) */}
+      <HomeInventoryGrid />
 
-      {/* 4. More Than a Showroom split */}
-      <ShowroomSplit />
+      {/* 4. Trust Pillars (Inspection, Enclosed Delivery, CARFAX, Financing) */}
+      <HomeTrustPillars />
 
-      {/* 5. Stacked Featured Cars */}
-      <StackedFeaturedCars />
-
-      {/* 6. Why Choose Us */}
-      <WhyChooseUs />
-
-      {/* 7. Testimonials */}
-      <Testimonials />
-
-      {/* 8. Promo Cards (Red sale + Financing) */}
-      <PromoCards />
-
-      {/* 9. People Behind Us */}
-      <PeopleBehindUs />
-
-      {/* 10. Future on Display Gallery */}
-      <FutureOnDisplay />
-
-      {/* 11. FAQ */}
-      <FaqSection />
-
-      {/* 12. News & Articles */}
-      <NewsArticles />
-
-      {/* 13. Closing CTA */}
-      <ClosingCta />
-    </div>
+      {/* 5. Contact & Consultation Banner */}
+      <HomeContactBanner />
+    </main>
   );
 }

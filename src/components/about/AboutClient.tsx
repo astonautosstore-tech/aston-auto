@@ -3,22 +3,19 @@
 import { useRef, useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { motion, useInView } from "framer-motion";
 import { 
   ShieldCheck, 
   Award, 
   Compass, 
   Sparkles, 
   CheckCircle2, 
-  Clock, 
   ArrowRight,
   Gauge,
   FileCheck2,
-  Lock
+  Lock,
+  Phone
 } from "lucide-react";
 import Container from "@/components/ui/Container";
-import { soundEngine } from "@/lib/sound";
-import CarCtaBanner from "@/components/blog/CarCtaBanner";
 
 interface StatItem {
   target: number;
@@ -28,9 +25,9 @@ interface StatItem {
 }
 
 const STATS: StatItem[] = [
-  { target: 120, prefix: "₦", suffix: "B+", label: "Luxury Transactions" },
-  { target: 500, prefix: "", suffix: "+", label: "Supercars Handed Over" },
-  { target: 100, prefix: "", suffix: "%", label: "Documented Provenance" },
+  { target: 250, prefix: "$", suffix: "M+", label: "Verified Acquisitions" },
+  { target: 1200, prefix: "", suffix: "+", label: "Vehicles Delivered" },
+  { target: 100, prefix: "", suffix: "%", label: "Clean CARFAX & Titles" },
   { target: 99, prefix: "", suffix: "%", label: "Client Satisfaction" },
 ];
 
@@ -74,314 +71,216 @@ const PILLARS = [
   {
     icon: FileCheck2,
     tag: "01 / VERIFICATION",
-    title: "150-Point Certified Provenance",
-    desc: "Every vehicle is inspected with paint-depth acoustic sensors, factory DME ECU over-rev analysis, and complete international auction pedigree documentation before inclusion in our salon.",
+    title: "150-Point Certified Inspection",
+    desc: "Every exotic and luxury vehicle undergoes paint-depth acoustic sensor verification, factory ECU analysis, and full provenance documentation before entering our showroom.",
   },
   {
     icon: Lock,
     tag: "02 / INTEGRITY",
-    title: "Zero Speculative Markups",
-    desc: "We eliminated arbitrary dealership pricing. Our valuations reflect global auction indices, transparent customs tariffs, and real market capital metrics with zero undisclosed fees.",
+    title: "Transparent Market Pricing",
+    desc: "We eliminated arbitrary dealership markups. Our valuations reflect real-time North American market indices and clean certified book values with zero undisclosed fees.",
   },
   {
     icon: Compass,
-    tag: "03 / DISCRETION",
-    title: "Pan-African White-Glove Handover",
-    desc: "Dedicated enclosed climate-controlled transporters deliver zero-kilometer transit directly to private residences in Lagos, Abuja, Port Harcourt, Accra, and London.",
+    tag: "03 / NATIONWIDE",
+    title: "Enclosed Carrier Handover",
+    desc: "Dedicated enclosed, climate-controlled transport delivers zero-road-wear transit directly to private residences in Beverly Hills, Miami, New York, Dallas, and across the US.",
   },
 ];
 
 const TIMELINE = [
   {
     year: "2018",
-    title: "Private Collector Syndicate",
-    desc: "Founded in Victoria Island as an exclusive private advisory for West Africa's foremost exotic automotive connoisseurs seeking allocation of limited-production hypercars.",
+    title: "Private Collector Advisory",
+    desc: "Founded as an exclusive private advisory for high-net-worth automotive enthusiasts seeking limited-production hypercars and certified exotics.",
   },
   {
     year: "2021",
-    title: "Acoustic Diagnostic Chamber",
-    desc: "Commissioned our flagship acoustic inspection salon equipped with specialized four-wheel hub dyno and multi-spectrum optical paint analysis booths.",
+    title: "Beverly Hills Flagship Salon",
+    desc: "Opened our premier showcase gallery on Rodeo Drive, featuring a dedicated multi-vehicle display lounge and white-glove client delivery suite.",
   },
   {
     year: "2024",
-    title: "Enclosed Logistics Fleet",
-    desc: "Expanded our internal fleet of climate-controlled, air-ride enclosed transport carriers, offering discreet nationwide doorstep deliveries with zero road exposure.",
+    title: "Nationwide Logistics Network",
+    desc: "Partnered with premier enclosed transport carriers to guarantee door-to-door insured transport anywhere in the continental United States.",
   },
   {
     year: "2026",
-    title: "The Digital Sanctuary",
-    desc: "Setting the contemporary benchmark for luxury motoring: real-time asset discovery, transparent pricing integrity, and seamless concierge reservations.",
-  },
-];
-
-const LEADERSHIP = [
-  {
-    name: "Tunde Oyelaran",
-    role: "Founder & Managing Director",
-    img: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=600&q=80",
-    bio: "Two decades in private capital and rare marquee acquisition across Geneva, London, and Lagos.",
-  },
-  {
-    name: "Amaka Chibueze",
-    role: "Director of International Acquisition",
-    img: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=600&q=80",
-    bio: "Direct liaison with European factory bespoke departments, RM Sotheby’s, and private marque collectors.",
-  },
-  {
-    name: "Emeka Eze",
-    role: "Head of VIP Concierge & Handover",
-    img: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=600&q=80",
-    bio: "Orchestrating bespoke white-glove handovers, inter-state transit security, and private client track days.",
-  },
-  {
-    name: "Sade Balogun",
-    role: "Lead Master Diagnostic Engineer",
-    img: "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=600&q=80",
-    bio: "Certified by Aston Martin, Porsche Motorsport, and Ferrari Corso Pilota technical academies.",
+    title: "Digital Automotive Showroom",
+    desc: "Setting the contemporary benchmark for luxury motoring: real-time inventory discovery, transparent USD pricing, and seamless concierge reservations.",
   },
 ];
 
 export default function AboutClient() {
+  const [statsTriggered, setStatsTriggered] = useState(false);
   const statsRef = useRef<HTMLDivElement>(null);
-  const statsInView = useInView(statsRef, { once: true, amount: 0.3 });
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setStatsTriggered(true);
+        }
+      },
+      { threshold: 0.3 }
+    );
+
+    if (statsRef.current) {
+      observer.observe(statsRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, []);
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white selection:bg-[#E10600] selection:text-white pt-28 sm:pt-36 pb-0">
-      
-      {/* ─── 1. EDITORIAL HERO SECTION ─── */}
-      <section className="relative overflow-hidden pb-16 sm:pb-24">
-        {/* Ambient background glow */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[350px] bg-[#E10600]/8 blur-[160px] pointer-events-none rounded-full" />
-
+    <div className="min-h-screen bg-white text-neutral-900 pt-20 sm:pt-24">
+      {/* ─── 1. HERO SECTION ─── */}
+      <section className="relative w-full bg-[#F9FAFB] border-b border-neutral-200 py-14 sm:py-20">
         <Container>
-          <div className="max-w-4xl mx-auto text-center space-y-6">
-            
-            {/* Tag Badge */}
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/[0.04] border border-white/10 backdrop-blur-md"
-            >
-              <span className="w-2 h-2 rounded-full bg-[#E10600] animate-pulse" />
-              <span className="font-mono text-[11px] uppercase tracking-[0.25em] text-[#A0A0A0]">
-                The Heritage of Aston Auto
-              </span>
-            </motion.div>
-
-            {/* Giant Title */}
-            <motion.h1
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.1 }}
-              className="font-display font-black text-4xl sm:text-6xl lg:text-7xl uppercase tracking-tight text-white leading-[1.05]"
-            >
-              Driven by Truth. <br />
-              <span
-                style={{
-                  background: "linear-gradient(180deg, #FFFFFF 0%, rgba(255,255,255,0.4) 100%)",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                }}
-              >
-                Curated for Perfection.
-              </span>
-            </motion.h1>
-
-            {/* Subtext */}
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.2 }}
-              className="text-sm sm:text-base md:text-lg text-[#8A8A8A] max-w-2xl mx-auto leading-relaxed"
-            >
-              We dismantled the archaic, opaque dealership model to create a sanctuary of authenticity, 
-              absolute transparency, and certified engineering excellence for the discerning automotive collector.
-            </motion.p>
-
-            {/* Quick trust metrics */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.3 }}
-              className="pt-6 flex flex-wrap items-center justify-center gap-4 sm:gap-8 text-xs font-mono uppercase tracking-wider text-[#A0A0A0]"
-            >
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-[#E10600]" />
-                <span>100% Provenance Guarantee</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-[#E10600]" />
-                <span>Acoustic Diagnostic Chamber</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-[#E10600]" />
-                <span>Enclosed Zero-KM Handover</span>
-              </div>
-            </motion.div>
-
+          <div className="max-w-3xl">
+            <span className="text-xs font-bold uppercase tracking-widest text-neutral-500 mb-2 block">
+              About Aston
+            </span>
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-neutral-950 tracking-tight mb-4">
+              Driven by Authenticity. <br />
+              Curated for Excellence.
+            </h1>
+            <p className="text-sm sm:text-base text-neutral-600 leading-relaxed max-w-2xl">
+              We rebuilt the luxury automotive dealership experience around absolute transparency, certified multipoint inspection, and white-glove nationwide delivery for discerning drivers and collectors.
+            </p>
           </div>
         </Container>
       </section>
 
-      {/* ─── 2. CINEMATIC FULL-BLEED SHOWROOM IMAGE ─── */}
-      <section className="relative w-full max-w-[1440px] mx-auto px-4 sm:px-8 lg:px-12 mb-20 sm:mb-28">
-        <div className="relative aspect-[16/9] sm:aspect-[21/9] w-full rounded-2xl sm:rounded-3xl overflow-hidden border border-white/10 bg-[#0A0A0A] shadow-2xl">
-          <Image
-            src="https://images.unsplash.com/photo-1603584173870-7f23fdae1b7a?auto=format&fit=crop&w=2200&q=85"
-            alt="Aston Auto Flagship Inspection Suite"
-            fill
-            priority
-            sizes="100vw"
-            className="object-cover object-center"
-          />
-          {/* Subtle vignette and bottom dark gradient */}
-          <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/30 to-black/30" />
-          
-          {/* Floating Location Card */}
-          <div className="absolute bottom-6 left-6 sm:bottom-10 sm:left-10 z-10 bg-black/60 backdrop-blur-md border border-white/15 px-5 py-3.5 rounded-xl flex items-center gap-3">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#E10600]" />
-            <div>
-              <p className="font-display text-xs sm:text-sm font-bold uppercase tracking-wider text-white">
-                Flagship Acoustic Inspection Suite
-              </p>
-              <p className="font-mono text-[11px] text-[#8A8A8A]">
-                Victoria Island &bull; Lagos, Nigeria
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ─── 3. OUR CORE PHILOSOPHY & PILLARS ─── */}
-      <section className="py-16 sm:py-24 border-t border-white/[0.06] bg-[#070707]">
+      {/* ─── 2. STATS BAR ─── */}
+      <section ref={statsRef} className="py-12 bg-white border-b border-neutral-200">
         <Container>
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-start">
-            
-            {/* Left Story */}
-            <div className="lg:col-span-5 space-y-6">
-              <div className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#E10600]" />
-                <span className="text-xs uppercase tracking-[0.25em] font-bold text-[#E10600]">
-                  The Philosophy
-                </span>
-              </div>
-
-              <h2 className="font-display font-black text-3xl sm:text-4xl md:text-5xl uppercase tracking-tight text-white leading-tight">
-                Making Car-Buying <br />
-                <span
-                  style={{
-                    background: "linear-gradient(180deg, #FFFFFF 0%, rgba(255,255,255,0.3) 100%)",
-                    WebkitBackgroundClip: "text",
-                    WebkitTextFillColor: "transparent",
-                  }}
-                >
-                  Transparent.
-                </span>
-              </h2>
-
-              <p className="text-sm sm:text-base text-[#8A8A8A] leading-relaxed">
-                For too long, the high-performance car market was cloaked in uncertainty: undisclosed structural repairs, 
-                wound-back instrument clusters, and speculative broker fees. 
-              </p>
-
-              <p className="text-sm sm:text-base text-[#8A8A8A] leading-relaxed">
-                Aston Auto was founded to establish a gold standard of verifiable truth. We believe that acquiring a bespoke grand tourer 
-                or numbered hypercar should be as reassuring and celebratory as commanding it on an open coastal highway.
-              </p>
-
-              <div className="pt-4">
-                <Link
-                  href="/inventory"
-                  onClick={() => soundEngine.playEngineRev()}
-                  className="inline-flex items-center gap-3 px-6 py-3.5 rounded-sm bg-white text-black font-bold text-xs uppercase tracking-[0.2em] hover:bg-neutral-200 transition-all shadow-md hover:scale-105 active:scale-95"
-                >
-                  <span>Explore The Portfolio</span>
-                  <ArrowRight className="w-4 h-4 text-[#E10600]" />
-                </Link>
-              </div>
-            </div>
-
-            {/* Right: 3 Pillar Cards */}
-            <div className="lg:col-span-7 space-y-6">
-              {PILLARS.map((pillar, idx) => {
-                const IconComponent = pillar.icon;
-                return (
-                  <div
-                    key={idx}
-                    className="p-8 sm:p-10 rounded-2xl bg-[#0D0D0D] border border-white/10 hover:border-white/25 transition-all duration-300 group shadow-xl"
-                  >
-                    <div className="flex items-center justify-between mb-4">
-                      <span className="font-mono text-xs text-[#E10600] font-semibold tracking-widest">
-                        {pillar.tag}
-                      </span>
-                      <IconComponent className="w-5 h-5 text-white/40 group-hover:text-[#E10600] transition-colors" />
-                    </div>
-
-                    <h3 className="font-display font-bold text-xl sm:text-2xl text-white mb-3 group-hover:text-white">
-                      {pillar.title}
-                    </h3>
-
-                    <p className="text-sm text-[#8A8A8A] leading-relaxed">
-                      {pillar.desc}
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-
-          </div>
-        </Container>
-      </section>
-
-      {/* ─── 4. ANIMATED COUNTABLE STATS ─── */}
-      <section ref={statsRef} className="py-16 sm:py-24 border-t border-white/[0.06] bg-[#050505]">
-        <Container>
-          <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8 sm:gap-12 text-center divide-y md:divide-y-0 md:divide-x divide-white/10">
-            {STATS.map((s, i) => (
-              <div key={i} className="pt-6 md:pt-0 px-4">
-                <div className="font-display font-black text-3xl sm:text-4xl lg:text-5xl text-white mb-2 tracking-tight flex items-center justify-center">
-                  {s.prefix && <span>{s.prefix}</span>}
-                  <CountUpNumber target={s.target} trigger={statsInView} duration={2400} />
-                  <span className="text-[#E10600]">{s.suffix}</span>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8">
+            {STATS.map((stat, i) => (
+              <div key={i} className="flex flex-col p-4 bg-[#F9FAFB] rounded-xl border border-neutral-200 text-center">
+                <div className="text-3xl sm:text-4xl font-extrabold text-neutral-950 mb-1">
+                  {stat.prefix}
+                  <CountUpNumber target={stat.target} trigger={statsTriggered} />
+                  {stat.suffix}
                 </div>
-                <p className="text-[11px] sm:text-xs uppercase tracking-[0.2em] font-semibold text-[#8A8A8A]">
-                  {s.label}
-                </p>
+                <span className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">
+                  {stat.label}
+                </span>
               </div>
             ))}
           </div>
         </Container>
       </section>
 
-      {/* ─── 5. THE TIMELINE OF EXCELLENCE ─── */}
-      <section className="py-20 sm:py-28 border-t border-white/[0.06] bg-[#080808]">
+      {/* ─── 3. THREE CORE PILLARS ─── */}
+      <section className="py-16 sm:py-24 bg-white">
         <Container>
-          <div className="max-w-2xl mx-auto text-center mb-16 sm:mb-20">
-            <span className="font-mono text-xs uppercase tracking-[0.25em] text-[#E10600] font-bold block mb-3">
-              Chronicles
+          <div className="text-center max-w-2xl mx-auto mb-14">
+            <span className="text-xs font-bold uppercase tracking-widest text-neutral-500 block mb-2">
+              The Standard
             </span>
-            <h2 className="font-display font-black text-3xl sm:text-4xl md:text-5xl uppercase tracking-tight text-white leading-tight">
-              A Journey of Uncompromising Standards
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-neutral-950 tracking-tight">
+              Why Discerning Clients Choose Aston
             </h2>
           </div>
 
-          <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8">
-            {TIMELINE.map((item, idx) => (
-              <div
-                key={idx}
-                className="relative p-8 rounded-2xl bg-[#0D0D0D] border border-white/10 hover:border-white/30 transition-all duration-300 group"
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <span className="font-display font-black text-2xl sm:text-3xl text-[#E10600]">
-                    {item.year}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {PILLARS.map((item, i) => {
+              const Icon = item.icon;
+              return (
+                <div
+                  key={i}
+                  className="flex flex-col p-8 bg-[#F9FAFB] rounded-2xl border border-neutral-200 hover:shadow-md transition-shadow"
+                >
+                  <div className="w-12 h-12 rounded-xl bg-neutral-950 text-white flex items-center justify-center mb-6">
+                    <Icon className="w-6 h-6" />
+                  </div>
+                  <span className="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-2">
+                    {item.tag}
                   </span>
-                  <span className="w-2 h-2 rounded-full bg-white/20 group-hover:bg-[#E10600] transition-colors" />
+                  <h3 className="text-xl font-bold text-neutral-950 mb-3">
+                    {item.title}
+                  </h3>
+                  <p className="text-xs sm:text-sm text-neutral-600 leading-relaxed">
+                    {item.desc}
+                  </p>
                 </div>
-                <h3 className="font-display font-bold text-lg sm:text-xl text-white mb-2">
+              );
+            })}
+          </div>
+        </Container>
+      </section>
+
+      {/* ─── 4. SHOWROOM & LOGISTICS IMAGE STRIP ─── */}
+      <section className="py-12 bg-[#F9FAFB] border-y border-neutral-200">
+        <Container>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+            <div className="lg:col-span-6 relative aspect-[16/10] w-full rounded-2xl overflow-hidden border border-neutral-200 shadow-sm">
+              <Image
+                src="https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?auto=format&fit=crop&w=1600&q=85"
+                alt="Aston Showroom Fleet"
+                fill
+                className="object-cover"
+              />
+            </div>
+
+            <div className="lg:col-span-6 space-y-4 lg:pl-6">
+              <span className="text-xs font-bold uppercase tracking-widest text-neutral-500 block">
+                Coast-to-Coast Reach
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-neutral-950 tracking-tight">
+                White-Glove Enclosed Delivery Across North America
+              </h2>
+              <p className="text-sm text-neutral-600 leading-relaxed">
+                Whether purchasing in person at our Beverly Hills showroom or transacting remotely from New York, Miami, or Chicago, our clients enjoy seamless doorstep transport in dedicated climate-controlled carriers.
+              </p>
+              <div className="pt-2 flex flex-wrap gap-4">
+                <Link
+                  href="/inventory"
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-neutral-950 text-white text-xs font-bold uppercase tracking-wider rounded-lg hover:bg-neutral-800 transition-colors"
+                >
+                  <span>Explore Inventory</span>
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+
+                <a
+                  href="tel:+14482264666"
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-white border border-neutral-300 text-neutral-900 text-xs font-bold uppercase tracking-wider rounded-lg hover:bg-neutral-50 transition-colors"
+                >
+                  <Phone className="w-4 h-4" />
+                  <span>+1 448 226 4666</span>
+                </a>
+              </div>
+            </div>
+          </div>
+        </Container>
+      </section>
+
+      {/* ─── 5. TIMELINE ─── */}
+      <section className="py-16 sm:py-24 bg-white">
+        <Container>
+          <div className="text-center max-w-xl mx-auto mb-14">
+            <span className="text-xs font-bold uppercase tracking-widest text-neutral-500 block mb-2">
+              Our Journey
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-neutral-950 tracking-tight">
+              The Evolution of Aston
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {TIMELINE.map((item, i) => (
+              <div
+                key={i}
+                className="p-6 bg-[#F9FAFB] rounded-xl border border-neutral-200 flex flex-col"
+              >
+                <span className="text-2xl font-extrabold text-neutral-950 mb-2">
+                  {item.year}
+                </span>
+                <h3 className="text-base font-bold text-neutral-900 mb-2">
                   {item.title}
                 </h3>
-                <p className="text-xs sm:text-sm text-[#8A8A8A] leading-relaxed">
+                <p className="text-xs text-neutral-600 leading-relaxed">
                   {item.desc}
                 </p>
               </div>
@@ -389,63 +288,6 @@ export default function AboutClient() {
           </div>
         </Container>
       </section>
-
-      {/* ─── 6. THE LEADERSHIP & MASTER TECHNICIANS ─── */}
-      <section className="py-20 sm:py-28 border-t border-white/[0.06] bg-[#050505]">
-        <Container>
-          <div className="text-center max-w-2xl mx-auto mb-16">
-            <div className="flex items-center justify-center gap-2 mb-3">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#E10600]" />
-              <span className="text-xs uppercase tracking-[0.25em] font-bold text-[#E10600]">
-                The Craftsmen
-              </span>
-            </div>
-            <h2 className="font-display font-black text-3xl sm:text-4xl md:text-5xl uppercase tracking-tight text-white leading-tight">
-              People Behind the Standard
-            </h2>
-            <p className="text-sm text-[#8A8A8A] mt-4">
-              Lifelong automotive purists, certified diagnostic engineers, and concierge specialists dedicated to perfection.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {LEADERSHIP.map((member, i) => (
-              <div
-                key={i}
-                className="group relative rounded-2xl overflow-hidden border border-white/10 bg-[#0D0D0D] shadow-xl flex flex-col justify-between"
-              >
-                <div className="relative aspect-[3/4] w-full overflow-hidden">
-                  <Image
-                    src={member.img}
-                    alt={member.name}
-                    fill
-                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                    className="object-cover grayscale group-hover:grayscale-0 group-hover:scale-105 transition-all duration-700"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#0D0D0D] via-transparent to-transparent" />
-                </div>
-
-                <div className="p-6 pt-2 space-y-2">
-                  <h3 className="font-display font-bold text-base sm:text-lg text-white uppercase tracking-wide">
-                    {member.name}
-                  </h3>
-                  <p className="text-xs text-[#E10600] uppercase tracking-wider font-semibold">
-                    {member.role}
-                  </p>
-                  <p className="text-xs text-[#8A8A8A] leading-relaxed pt-1">
-                    {member.bio}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Container>
-      </section>
-
-      {/* ─── 7. READY TO FIND YOUR PERFECT CAR BANNER ─── */}
-      <CarCtaBanner />
-
-      {/* Note: The global layout Footer in layout.tsx automatically provides the bottom tagline, columns, and chrome Levrix wordmark */}
     </div>
   );
 }

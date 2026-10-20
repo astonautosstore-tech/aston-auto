@@ -6,45 +6,60 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
- * Format numbers as Nigerian Naira currency (₦)
+ * Format numbers as US Dollar currency ($)
  */
-export function formatNaira(amount: number | string | null | undefined): string {
+export function formatUSD(amount: number | string | null | undefined): string {
   if (amount === null || amount === undefined || isNaN(Number(amount))) {
-    return "₦0";
+    return "$0";
   }
   const numeric = typeof amount === "string" ? parseFloat(amount) : amount;
-  return new Intl.NumberFormat("en-NG", {
+  return new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency: "NGN",
+    currency: "USD",
     maximumFractionDigits: 0,
-  }).format(numeric).replace("NGN", "₦");
+  }).format(numeric);
 }
 
 /**
- * Format large numbers with abbreviated units (e.g. 520M, 1.2M)
+ * Standard Price Formatter (USD)
  */
-export function formatCompactNaira(amount: number): string {
+export const formatPrice = formatUSD;
+
+/**
+ * Backward compatibility alias for legacy components
+ */
+export const formatNaira = formatUSD;
+
+/**
+ * Format large numbers with abbreviated units (e.g. $150M, $1.2M, $750K)
+ */
+export function formatCompactUSD(amount: number): string {
   if (amount >= 1_000_000_000) {
-    return `₦${(amount / 1_000_000_000).toFixed(1)}B`;
+    return `$${(amount / 1_000_000_000).toFixed(1)}B`;
   }
   if (amount >= 1_000_000) {
-    return `₦${(amount / 1_000_000).toFixed(0)}M`;
+    return `$${(amount / 1_000_000).toFixed(0)}M`;
   }
-  return formatNaira(amount);
+  if (amount >= 1_000) {
+    return `$${(amount / 1_000).toFixed(0)}K`;
+  }
+  return formatUSD(amount);
 }
 
+export const formatCompactNaira = formatCompactUSD;
+
 /**
- * Calculate estimated monthly financing payment
- * @param price Total vehicle price
+ * Calculate estimated monthly financing payment (US luxury auto terms)
+ * @param price Total vehicle price in USD
  * @param downPaymentPercent e.g. 20 (percent)
- * @param tenureMonths e.g. 36 or 48 months
- * @param annualInterestRate e.g. 18 (percent standard luxury auto financing in Nigeria)
+ * @param tenureMonths e.g. 36, 48, or 60 months
+ * @param annualInterestRate e.g. 5.9 (percent standard US prime auto loan rate)
  */
 export function calculateFinancing(
   price: number,
   downPaymentPercent: number = 20,
-  tenureMonths: number = 36,
-  annualInterestRate: number = 18
+  tenureMonths: number = 60,
+  annualInterestRate: number = 5.9
 ) {
   const downPayment = price * (downPaymentPercent / 100);
   const loanPrincipal = price - downPayment;

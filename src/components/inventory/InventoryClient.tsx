@@ -3,22 +3,47 @@
 import { useState, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { motion } from "framer-motion";
-import { ArrowRight, ChevronDown } from "lucide-react";
+import { ChevronDown, ArrowRight, Gauge, Zap, Cog, Search } from "lucide-react";
 import { Car } from "@/types/database";
 import Container from "@/components/ui/Container";
-import { soundEngine } from "@/lib/sound";
+import { formatUSD } from "@/lib/utils";
+
+import { storeApi } from "@/lib/supabase/client";
+import { useEffect } from "react";
 
 interface InventoryClientProps {
   initialCars: Car[];
 }
 
 export default function InventoryClient({ initialCars }: InventoryClientProps) {
-  const [cars] = useState<Car[]>(initialCars);
+  const [cars, setCars] = useState<Car[]>(initialCars);
   const [selectedBrand, setSelectedBrand] = useState<string>("All");
   const [selectedType, setSelectedType] = useState<string>("All");
   const [selectedCondition, setSelectedCondition] = useState<string>("All");
-  const [visibleCount, setVisibleCount] = useState<number>(9);
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [visibleCount, setVisibleCount] = useState<number>(12);
+
+  useEffect(() => {
+    async function refreshCars() {
+      try {
+        const live = await storeApi.getCars();
+        if (live && live.length > 0) {
+          setCars(live);
+        }
+      } catch (err) {
+        console.warn("Failed to load live cars:", err);
+      }
+    }
+
+    refreshCars();
+
+    const handleUpdate = () => {
+      refreshCars();
+    };
+
+    window.addEventListener("aston_cars_updated", handleUpdate);
+    return () => window.removeEventListener("aston_cars_updated", handleUpdate);
+  }, []);
 
   // Extract unique filter dropdown values
   const brands = useMemo(() => {
@@ -39,263 +64,292 @@ export default function InventoryClient({ initialCars }: InventoryClientProps) {
       const matchBrand = selectedBrand === "All" || car.brand === selectedBrand;
       const matchType = selectedType === "All" || car.body_type === selectedType;
       const matchCondition = selectedCondition === "All" || car.condition === selectedCondition;
-      return matchBrand && matchType && matchCondition;
+      
+      let matchSearch = true;
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        matchSearch =
+          car.title.toLowerCase().includes(q) ||
+          car.brand.toLowerCase().includes(q) ||
+          car.model.toLowerCase().includes(q);
+      }
+
+      return matchBrand && matchType && matchCondition && matchSearch;
     });
-  }, [cars, selectedBrand, selectedType, selectedCondition]);
+  }, [cars, selectedBrand, selectedType, selectedCondition, searchQuery]);
 
   const displayedCars = filteredCars.slice(0, visibleCount);
 
-  const formatPrice = (price: number) => {
-    // If price is stored in NGN millions (e.g. 520,000,000), convert sensibly or display clean USD if under 10M
-    if (price >= 10000000) {
-      // Converted equivalent in USD (~$1 = ₦1,500)
-      const usdEquivalent = Math.round(price / 1500 / 1000) * 1000;
-      return `$${usdEquivalent.toLocaleString()}`;
-    }
-    return `$${price.toLocaleString()}`;
-  };
-
   return (
-    <div className="min-h-screen bg-[#050505] text-white selection:bg-[#E10600] selection:text-white pt-20 sm:pt-24">
-      
-      {/* ─── 1. HERO BANNER: "COLLECTION" ─── */}
-      <section className="relative w-full h-[55vh] min-h-[380px] max-h-[560px] overflow-hidden flex items-center justify-center">
-        {/* Background Showroom Fleet Lineup */}
-        <div className="absolute inset-0 pointer-events-none z-0">
-          <Image
-            src="https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?auto=format&fit=crop&w=2400&q=90"
-            alt="Aston Auto Luxury Fleet Collection"
-            fill
-            priority
-            sizes="100vw"
-            className="object-cover object-center opacity-60"
-          />
-          {/* Gradients blending seamlessly into #050505 */}
-          <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/40 to-[#050505]/80" />
-          <div className="absolute inset-0 bg-radial-gradient from-transparent via-[#050505]/30 to-[#050505]/90" />
-        </div>
-
-        {/* Giant "Collection" Display Wordmark */}
-        <Container className="relative z-10 text-center select-none pt-8">
-          <motion.h1
-            initial={{ opacity: 0, scale: 0.95, y: 15 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-            className="font-display font-black text-[13vw] sm:text-[11vw] md:text-[9.5vw] lg:text-[8.5vw] tracking-tight uppercase leading-none drop-shadow-2xl"
-            style={{
-              background: "linear-gradient(180deg, #FFFFFF 0%, rgba(255,255,255,0.85) 45%, rgba(255,255,255,0.15) 100%)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-            }}
-          >
-            Collection
-          </motion.h1>
+    <div className="min-h-screen bg-white text-neutral-900 pt-20 sm:pt-24">
+      {/* ─── 1. HEADER BANNER ─── */}
+      <section className="relative w-full bg-[#F9FAFB] border-b border-neutral-200 py-12 sm:py-16">
+        <Container>
+          <div className="max-w-3xl">
+            <span className="text-xs font-bold uppercase tracking-widest text-neutral-500 mb-2 block">
+              Direct Dealership Inventory
+            </span>
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-neutral-950 tracking-tight mb-3">
+              Vehicle Inventory
+            </h1>
+            <p className="text-sm sm:text-base text-neutral-600 leading-relaxed">
+              Explore our verified selection of luxury, exotic, and high-performance automobiles. Every vehicle includes clean CARFAX verification and available enclosed nationwide delivery.
+            </p>
+          </div>
         </Container>
       </section>
 
-      {/* ─── 2. "OUR LUXURY CARS" & FILTER DROPDOWNS ─── */}
-      <section className="py-10 sm:py-14 border-t border-white/5">
+      {/* ─── 2. FILTER CONTROLS ─── */}
+      <section className="py-8 bg-white border-b border-neutral-100">
         <Container>
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-8 sm:pb-12 border-b border-white/10">
-            {/* Title */}
-            <div>
-              <h2 className="font-display font-bold text-2xl sm:text-3xl lg:text-4xl uppercase tracking-tight text-white">
-                Our Luxury Cars
-              </h2>
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-[#F9FAFB] p-4 rounded-xl border border-neutral-200">
+            {/* Search Input */}
+            <div className="relative flex-1 min-w-[240px]">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+              <input
+                type="text"
+                placeholder="Search inventory by make, model, or keyword..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 text-xs sm:text-sm bg-white rounded-lg border border-neutral-300 text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-950"
+              />
             </div>
 
-            {/* Right: 3 Filter Dropdowns */}
-            <div className="flex flex-wrap items-center gap-3 sm:gap-4">
-              
+            {/* Dropdowns */}
+            <div className="flex flex-wrap items-center gap-3">
               {/* Brand Filter */}
               <div className="relative">
                 <select
                   value={selectedBrand}
-                  onChange={(e) => {
-                    soundEngine.playHoverTick();
-                    setSelectedBrand(e.target.value);
-                  }}
-                  className="appearance-none bg-[#0D0D0D] border border-white/15 rounded-lg px-4 py-2.5 pr-9 text-xs font-medium text-white/90 hover:border-white/30 focus:outline-none focus:border-white/50 transition-colors cursor-pointer"
+                  onChange={(e) => setSelectedBrand(e.target.value)}
+                  className="appearance-none bg-white border border-neutral-300 rounded-lg px-4 py-2.5 pr-9 text-xs sm:text-sm font-semibold text-neutral-800 hover:border-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-950 transition-colors cursor-pointer shadow-sm"
                   aria-label="Filter by Brand"
                 >
-                  <option value="All">Brand: All</option>
+                  <option value="All">All Makes</option>
                   {brands.filter((b) => b !== "All").map((brand) => (
-                    <option key={brand} value={brand} className="bg-[#0D0D0D] text-white">
+                    <option key={brand} value={brand}>
                       {brand}
                     </option>
                   ))}
                 </select>
-                <ChevronDown className="w-3.5 h-3.5 text-[#8A8A8A] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <ChevronDown className="w-3.5 h-3.5 text-neutral-500 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               </div>
 
               {/* Type / Body Filter */}
               <div className="relative">
                 <select
                   value={selectedType}
-                  onChange={(e) => {
-                    soundEngine.playHoverTick();
-                    setSelectedType(e.target.value);
-                  }}
-                  className="appearance-none bg-[#0D0D0D] border border-white/15 rounded-lg px-4 py-2.5 pr-9 text-xs font-medium text-white/90 hover:border-white/30 focus:outline-none focus:border-white/50 transition-colors cursor-pointer"
+                  onChange={(e) => setSelectedType(e.target.value)}
+                  className="appearance-none bg-white border border-neutral-300 rounded-lg px-4 py-2.5 pr-9 text-xs sm:text-sm font-semibold text-neutral-800 hover:border-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-950 transition-colors cursor-pointer shadow-sm"
                   aria-label="Filter by Body Type"
                 >
-                  <option value="All">Type: All</option>
+                  <option value="All">All Body Types</option>
                   {bodyTypes.filter((t) => t !== "All").map((type) => (
-                    <option key={type} value={type} className="bg-[#0D0D0D] text-white">
+                    <option key={type} value={type}>
                       {type}
                     </option>
                   ))}
                 </select>
-                <ChevronDown className="w-3.5 h-3.5 text-[#8A8A8A] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <ChevronDown className="w-3.5 h-3.5 text-neutral-500 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               </div>
 
               {/* Condition Filter */}
               <div className="relative">
                 <select
                   value={selectedCondition}
-                  onChange={(e) => {
-                    soundEngine.playHoverTick();
-                    setSelectedCondition(e.target.value);
-                  }}
-                  className="appearance-none bg-[#0D0D0D] border border-white/15 rounded-lg px-4 py-2.5 pr-9 text-xs font-medium text-white/90 hover:border-white/30 focus:outline-none focus:border-white/50 transition-colors cursor-pointer"
+                  onChange={(e) => setSelectedCondition(e.target.value)}
+                  className="appearance-none bg-white border border-neutral-300 rounded-lg px-4 py-2.5 pr-9 text-xs sm:text-sm font-semibold text-neutral-800 hover:border-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-950 transition-colors cursor-pointer shadow-sm"
                   aria-label="Filter by Condition"
                 >
-                  <option value="All">Condition: All</option>
+                  <option value="All">All Conditions</option>
                   {conditions.filter((c) => c !== "All").map((condition) => (
-                    <option key={condition} value={condition} className="bg-[#0D0D0D] text-white">
+                    <option key={condition} value={condition}>
                       {condition}
                     </option>
                   ))}
                 </select>
-                <ChevronDown className="w-3.5 h-3.5 text-[#8A8A8A] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <ChevronDown className="w-3.5 h-3.5 text-neutral-500 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               </div>
-
             </div>
           </div>
+        </Container>
+      </section>
 
-          {/* ─── 3. CAR CARDS 3-COLUMN GRID ─── */}
-          {displayedCars.length === 0 ? (
-            <div className="py-20 text-center space-y-4">
-              <p className="text-base text-[#8A8A8A]">No luxury vehicles match your selected filters.</p>
+      {/* ─── 3. CAR CARDS 3-COLUMN GRID ─── */}
+      <section className="py-12 sm:py-16">
+        <Container>
+          {/* Results count */}
+          <div className="flex items-center justify-between mb-8">
+            <span className="text-xs sm:text-sm font-semibold text-neutral-600">
+              Showing {displayedCars.length} of {filteredCars.length} vehicles
+            </span>
+
+            {(selectedBrand !== "All" || selectedType !== "All" || selectedCondition !== "All" || searchQuery) && (
               <button
                 onClick={() => {
                   setSelectedBrand("All");
                   setSelectedType("All");
                   setSelectedCondition("All");
+                  setSearchQuery("");
                 }}
-                className="px-6 py-2.5 rounded-lg bg-white/10 hover:bg-white/20 text-xs uppercase tracking-wider font-semibold text-white transition-colors"
+                className="text-xs font-bold text-neutral-900 hover:text-neutral-600 underline"
               >
-                Reset Filters
+                Reset All Filters
+              </button>
+            )}
+          </div>
+
+          {displayedCars.length === 0 ? (
+            <div className="py-20 text-center bg-[#F9FAFB] rounded-2xl border border-dashed border-neutral-300 space-y-3">
+              <p className="text-base font-semibold text-neutral-800">
+                No vehicles matched your current filters.
+              </p>
+              <p className="text-xs text-neutral-500">
+                Try widening your search or clearing your active filters.
+              </p>
+              <button
+                onClick={() => {
+                  setSelectedBrand("All");
+                  setSelectedType("All");
+                  setSelectedCondition("All");
+                  setSearchQuery("");
+                }}
+                className="mt-2 px-5 py-2.5 rounded-lg bg-neutral-950 text-white text-xs font-semibold hover:bg-neutral-800"
+              >
+                Clear Filters
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 pt-4">
-              {displayedCars.map((car, index) => (
-                <motion.div
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+              {displayedCars.map((car) => (
+                <div
                   key={car.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: (index % 6) * 0.08, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                  className="group flex flex-col bg-white rounded-xl border border-neutral-200 overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1"
                 >
-                  <Link
-                    href={`/cars/${car.slug}`}
-                    onClick={() => soundEngine.playHoverTick()}
-                    className="group block relative rounded-2xl sm:rounded-3xl overflow-hidden bg-[#0D0D0D] border border-white/10 hover:border-white/30 transition-all duration-300 hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-black"
-                  >
-                    {/* Top Badges (Automatic & Year) */}
-                    <div className="absolute top-4 left-4 right-4 z-20 flex items-center justify-between pointer-events-none">
-                      <span className="px-3.5 py-1 rounded-full text-[11px] font-medium bg-black/60 backdrop-blur-md border border-white/10 text-white/90">
-                        {car.transmission.includes("Manual") ? "Manual" : "Automatic"}
-                      </span>
-                      <span className="px-3.5 py-1 rounded-full text-[11px] font-medium bg-black/60 backdrop-blur-md border border-white/10 text-white/90">
-                        {car.year}
-                      </span>
+                  {/* Car Image with aspect ratio */}
+                  <div className="relative aspect-[16/10] w-full overflow-hidden bg-neutral-100">
+                    <Image
+                      src={car.hero_image}
+                      alt={car.title}
+                      fill
+                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                      className="object-cover object-center transition-transform duration-500 group-hover:scale-105"
+                    />
+
+                    {/* Top Badges */}
+                    <div className="absolute top-3 left-3 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-black/75 backdrop-blur-md text-white">
+                      {car.condition || "Available"}
                     </div>
 
-                    {/* Car Image with aspect ratio */}
-                    <div className="relative aspect-[16/10] w-full overflow-hidden bg-[#141414]">
-                      <Image
-                        src={car.hero_image}
-                        alt={car.title}
-                        fill
-                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                        className="object-cover object-center transition-transform duration-700 ease-out group-hover:scale-105"
-                      />
-                      {/* Deep gradient overlay for text readability */}
-                      <div className="absolute inset-0 bg-gradient-to-t from-[#0D0D0D] via-[#0D0D0D]/30 to-transparent" />
+                    <div className="absolute top-3 right-3 px-2.5 py-1 rounded-md text-[11px] font-bold bg-white/90 backdrop-blur-md text-neutral-900 shadow-sm">
+                      {car.year}
+                    </div>
+                  </div>
+
+                  {/* Card Body */}
+                  <div className="flex flex-col flex-1 p-5">
+                    <div className="text-xs font-bold uppercase tracking-wider text-neutral-500 mb-1">
+                      {car.brand} • {car.body_type}
                     </div>
 
-                    {/* Bottom Details Overlay */}
-                    <div className="p-5 sm:p-6 bg-[#0D0D0D] space-y-1">
-                      <h3 className="font-bold text-base sm:text-lg text-white group-hover:text-[#E10600] transition-colors leading-snug">
-                        {car.title}
-                      </h3>
-                      <p className="text-xs sm:text-sm text-[#A0A0A0] font-mono">
-                        {formatPrice(car.discount_price ?? car.price)}
-                      </p>
+                    <h3 className="text-lg font-bold text-neutral-950 group-hover:text-neutral-700 transition-colors line-clamp-1 mb-2">
+                      {car.title}
+                    </h3>
+
+                    <p className="text-xs text-neutral-500 line-clamp-1 mb-4">
+                      {car.model}
+                    </p>
+
+                    {/* Specs Row */}
+                    <div className="grid grid-cols-3 gap-2 py-3 px-3 bg-[#F9FAFB] rounded-lg border border-neutral-100 text-xs text-neutral-600 mb-5">
+                      <div className="flex items-center gap-1.5 truncate">
+                        <Gauge className="w-3.5 h-3.5 text-neutral-500 shrink-0" />
+                        <span className="font-semibold text-neutral-900">
+                          {car.mileage ? `${car.mileage.toLocaleString()} mi` : "Delivery mi"}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 truncate">
+                        <Zap className="w-3.5 h-3.5 text-neutral-500 shrink-0" />
+                        <span className="font-semibold text-neutral-900">
+                          {car.horsepower ? `${car.horsepower} HP` : "High Output"}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 truncate">
+                        <Cog className="w-3.5 h-3.5 text-neutral-500 shrink-0" />
+                        <span className="font-semibold text-neutral-900 truncate">
+                          {car.transmission === "Automatic" ? "Auto" : "Manual"}
+                        </span>
+                      </div>
                     </div>
-                  </Link>
-                </motion.div>
+
+                    {/* Price and Action Button */}
+                    <div className="mt-auto pt-4 border-t border-neutral-100 flex items-center justify-between gap-3">
+                      <div>
+                        <span className="text-[10px] uppercase font-bold text-neutral-400 block tracking-wider">
+                          Price (USD)
+                        </span>
+                        <span className="text-xl font-extrabold text-neutral-950">
+                          {formatUSD(car.discount_price ?? car.price)}
+                        </span>
+                      </div>
+
+                      <Link
+                        href={`/cars/${car.slug}`}
+                        className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-neutral-950 hover:bg-neutral-800 text-white text-xs font-bold transition-all shadow-sm"
+                      >
+                        <span>View Details</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </Link>
+                    </div>
+                  </div>
+                </div>
               ))}
             </div>
           )}
 
           {/* ─── 4. "LOAD MORE" BUTTON ─── */}
           {visibleCount < filteredCars.length && (
-            <div className="pt-12 sm:pt-16 pb-6 flex justify-center">
+            <div className="pt-12 sm:pt-16 flex justify-center">
               <button
-                onClick={() => {
-                  soundEngine.playHoverTick();
-                  setVisibleCount((prev) => prev + 6);
-                }}
-                className="px-8 py-3.5 rounded-md bg-white text-black font-bold text-xs uppercase tracking-[0.2em] shadow-md hover:bg-neutral-200 active:scale-95 transition-all duration-200 cursor-pointer"
+                onClick={() => setVisibleCount((prev) => prev + 6)}
+                className="px-8 py-3.5 rounded-lg bg-neutral-950 hover:bg-neutral-800 text-white font-bold text-xs uppercase tracking-wider shadow-sm transition-all"
               >
-                Load More
+                Load More Vehicles
               </button>
             </div>
           )}
         </Container>
       </section>
 
-      {/* ─── 5. "READY TO FIND YOUR PERFECT CAR?" BANNER ─── */}
-      <section className="relative w-full overflow-hidden bg-[#070707] py-24 sm:py-32 border-t border-white/10 mt-12 sm:mt-16">
-        <div className="absolute inset-0 pointer-events-none">
-          <Image
-            src="https://images.unsplash.com/photo-1617814076367-b759c7d7e738?auto=format&fit=crop&w=2400&q=90"
-            alt="Aston Auto Red Supercar"
-            fill
-            className="object-cover object-center opacity-65"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-transparent to-[#050505]/90" />
-          <div className="absolute inset-0 bg-radial-gradient from-transparent via-[#050505]/40 to-[#050505]/90" />
-        </div>
-
-        <Container className="relative z-10 text-center max-w-2xl mx-auto space-y-6">
-          <h2 className="font-display font-black text-3xl sm:text-4xl md:text-5xl uppercase tracking-tight text-white leading-tight">
-            Ready to Find Your <br />
-            Perfect Car?
+      {/* ─── 5. SIMPLE DEALERSHIP CONTACT STRIP ─── */}
+      <section className="w-full py-14 sm:py-16 bg-[#F9FAFB] border-t border-neutral-200">
+        <Container className="text-center max-w-2xl mx-auto space-y-4">
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-neutral-950 tracking-tight">
+            Can&apos;t Find the Exact Vehicle You&apos;re Looking For?
           </h2>
 
-          <p className="text-xs sm:text-sm text-[#A0A0A0] leading-relaxed max-w-lg mx-auto">
-            Premium vehicles, exceptional service, unleashed speeds. Experience automotive excellence tailored for the discerning driver.
+          <p className="text-xs sm:text-sm text-neutral-600 leading-relaxed">
+            Our luxury acquisition desk accesses private off-market collections across the United States. Call our advisors today at <strong className="text-neutral-950">+1 448 226 4666</strong>.
           </p>
 
-          <div className="pt-2">
-            <button
-              onClick={() => {
-                soundEngine.playEngineRev();
-                window.scrollTo({ top: 400, behavior: "smooth" });
-              }}
-              className="inline-flex items-center gap-2.5 px-8 py-4 rounded-md bg-[#E10600] text-white font-bold text-xs uppercase tracking-[0.2em] shadow-lg shadow-[#E10600]/30 hover:bg-[#FF1F14] hover:scale-105 active:scale-95 transition-all duration-300 cursor-pointer"
+          <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
+            <a
+              href="tel:+14482264666"
+              className="inline-flex items-center gap-2 px-6 py-3.5 rounded-lg bg-neutral-950 text-white font-bold text-xs uppercase tracking-wider hover:bg-neutral-800 transition-all shadow-sm"
             >
-              <span>Browse Cars</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
+              <span>Call +1 448 226 4666</span>
+            </a>
+            <Link
+              href="/contact"
+              className="inline-flex items-center gap-2 px-6 py-3.5 rounded-lg bg-white border border-neutral-300 text-neutral-900 font-bold text-xs uppercase tracking-wider hover:bg-neutral-50 transition-all shadow-sm"
+            >
+              <span>Inquire Online</span>
+            </Link>
           </div>
         </Container>
       </section>
-
-      {/* Global layout Footer automatically provides the bottom tagline, links, and chrome wordmark */}
     </div>
   );
 }

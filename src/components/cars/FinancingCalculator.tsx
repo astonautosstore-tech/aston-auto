@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Calculator, ShieldCheck, Check } from "lucide-react";
-import { formatNaira, calculateFinancing } from "@/lib/utils";
-import { soundEngine } from "@/lib/sound";
+import { Calculator, Check } from "lucide-react";
+import { formatUSD, calculateFinancing } from "@/lib/utils";
 
 interface FinancingCalculatorProps {
   vehiclePrice: number;
@@ -11,25 +10,24 @@ interface FinancingCalculatorProps {
 
 export default function FinancingCalculator({ vehiclePrice }: FinancingCalculatorProps) {
   const [downPaymentPercent, setDownPaymentPercent] = useState<number>(20);
-  const [tenureMonths, setTenureMonths] = useState<number>(36);
-  const [interestRate, setInterestRate] = useState<number>(18);
+  const [tenureMonths, setTenureMonths] = useState<number>(48);
+  const [interestRate, setInterestRate] = useState<number>(5.9);
   const [applied, setApplied] = useState(false);
 
   const calc = calculateFinancing(vehiclePrice, downPaymentPercent, tenureMonths, interestRate);
 
   const handleApply = () => {
-    soundEngine.playSuccessChime();
     setApplied(true);
   };
 
   return (
-    <div className="p-6 sm:p-8 rounded-2xl bg-[#F7F7F8] border border-[#E4E4E7]">
-      <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-[0.2em] text-[#0D5C3A] mb-2 font-semibold">
-        <Calculator className="w-4 h-4" />
-        <span>Bespoke Amortization Calculator</span>
+    <div className="p-6 sm:p-8 rounded-2xl bg-[#F9FAFB] border border-neutral-200">
+      <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-neutral-500 mb-2">
+        <Calculator className="w-4 h-4 text-neutral-800" />
+        <span>US Automotive Loan & Lease Calculator</span>
       </div>
-      <h3 className="text-xl font-bold text-[#0A0A0A] tracking-tight mb-6">
-        Private Concierge Financing
+      <h3 className="text-xl font-bold text-neutral-950 tracking-tight mb-6">
+        Estimated Monthly Payment
       </h3>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -37,10 +35,10 @@ export default function FinancingCalculator({ vehiclePrice }: FinancingCalculato
         <div className="space-y-6">
           {/* Down Payment % */}
           <div>
-            <div className="flex justify-between items-center text-xs font-mono mb-2">
-              <span className="text-[#64748B]">Down Payment:</span>
-              <span className="font-bold text-[#0A0A0A]">
-                {downPaymentPercent}% ({formatNaira(calc.downPayment)})
+            <div className="flex justify-between items-center text-xs font-semibold mb-2">
+              <span className="text-neutral-500">Down Payment:</span>
+              <span className="font-bold text-neutral-950">
+                {downPaymentPercent}% ({formatUSD(calc.downPayment)})
               </span>
             </div>
             <input
@@ -51,9 +49,9 @@ export default function FinancingCalculator({ vehiclePrice }: FinancingCalculato
               value={downPaymentPercent}
               onChange={(e) => setDownPaymentPercent(Number(e.target.value))}
               aria-label="Down payment percentage"
-              className="w-full accent-[#0D5C3A]"
+              className="w-full accent-neutral-950"
             />
-            <div className="flex justify-between text-[10px] text-neutral-400 font-mono mt-1">
+            <div className="flex justify-between text-[11px] text-neutral-400 mt-1">
               <span>10% (Minimum)</span>
               <span>60%</span>
             </div>
@@ -61,23 +59,20 @@ export default function FinancingCalculator({ vehiclePrice }: FinancingCalculato
 
           {/* Tenure Months */}
           <div>
-            <div className="flex justify-between items-center text-xs font-mono mb-2">
-              <span className="text-[#64748B]">Repayment Period:</span>
-              <span className="font-bold text-[#0A0A0A]">{tenureMonths} Months ({tenureMonths / 12} Years)</span>
+            <div className="flex justify-between items-center text-xs font-semibold mb-2">
+              <span className="text-neutral-500">Loan Term:</span>
+              <span className="font-bold text-neutral-950">{tenureMonths} Months ({tenureMonths / 12} Years)</span>
             </div>
             <div className="grid grid-cols-4 gap-2">
-              {[12, 24, 36, 48].map((months) => (
+              {[24, 36, 48, 60].map((months) => (
                 <button
                   key={months}
                   type="button"
-                  onClick={() => {
-                    soundEngine.playHoverTick();
-                    setTenureMonths(months);
-                  }}
-                  className={`py-2 text-xs font-mono rounded-lg border transition-all cursor-pointer ${
+                  onClick={() => setTenureMonths(months)}
+                  className={`py-2 text-xs font-bold rounded-lg border transition-all cursor-pointer ${
                     tenureMonths === months
-                      ? "bg-[#0A0A0A] text-white border-[#0A0A0A]"
-                      : "bg-white text-[#0A0A0A] border-[#E4E4E7] hover:border-black"
+                      ? "bg-neutral-950 text-white border-neutral-950"
+                      : "bg-white text-neutral-800 border-neutral-300 hover:border-neutral-950"
                   }`}
                 >
                   {months} Mo
@@ -88,53 +83,57 @@ export default function FinancingCalculator({ vehiclePrice }: FinancingCalculato
 
           {/* Annual Interest Rate */}
           <div>
-            <div className="flex justify-between items-center text-xs font-mono mb-2">
-              <span className="text-[#64748B]">Estimated Luxury Rate:</span>
-              <span className="font-bold text-[#0A0A0A]">{interestRate}% APR</span>
+            <div className="flex justify-between items-center text-xs font-semibold mb-2">
+              <span className="text-neutral-500">Estimated APR:</span>
+              <span className="font-bold text-neutral-950">{interestRate}% APR</span>
             </div>
             <input
               type="range"
-              min={12}
-              max={24}
-              step={1}
+              min={3.9}
+              max={10.9}
+              step={0.5}
               value={interestRate}
               onChange={(e) => setInterestRate(Number(e.target.value))}
               aria-label="Annual interest rate"
-              className="w-full accent-[#0D5C3A]"
+              className="w-full accent-neutral-950"
             />
+            <div className="flex justify-between text-[11px] text-neutral-400 mt-1">
+              <span>3.9% (Tier 1 Prime)</span>
+              <span>10.9%</span>
+            </div>
           </div>
         </div>
 
         {/* Calculated Results Summary Box */}
-        <div className="p-6 rounded-xl bg-white border border-[#E4E4E7] flex flex-col justify-between shadow-xs">
+        <div className="p-6 rounded-xl bg-white border border-neutral-200 flex flex-col justify-between shadow-sm">
           <div>
-            <span className="text-[11px] font-mono uppercase tracking-wider text-[#94a3b8]">
-              Estimated Monthly Outlay
+            <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400">
+              Estimated Monthly Payment
             </span>
-            <div className="text-3xl font-extrabold font-mono text-[#0D5C3A] mt-1 mb-6">
-              {formatNaira(calc.monthlyPayment)}
-              <span className="text-xs font-normal text-neutral-400"> / month</span>
+            <div className="text-3xl font-extrabold text-neutral-950 mt-1 mb-6">
+              {formatUSD(calc.monthlyPayment)}
+              <span className="text-xs font-normal text-neutral-500"> / month</span>
             </div>
 
-            <div className="space-y-3 pt-4 border-t border-[#E4E4E7] text-xs font-mono">
-              <div className="flex justify-between text-[#64748B]">
+            <div className="space-y-3 pt-4 border-t border-neutral-100 text-xs">
+              <div className="flex justify-between text-neutral-600">
                 <span>Down Payment Due:</span>
-                <span className="font-bold text-[#0A0A0A]">{formatNaira(calc.downPayment)}</span>
+                <span className="font-bold text-neutral-950">{formatUSD(calc.downPayment)}</span>
               </div>
-              <div className="flex justify-between text-[#64748B]">
+              <div className="flex justify-between text-neutral-600">
                 <span>Loan Principal:</span>
-                <span className="text-[#0A0A0A]">{formatNaira(calc.loanPrincipal)}</span>
+                <span className="font-bold text-neutral-950">{formatUSD(calc.loanPrincipal)}</span>
               </div>
-              <div className="flex justify-between text-[#64748B]">
+              <div className="flex justify-between text-neutral-600">
                 <span>Total Repayment:</span>
-                <span className="text-[#0A0A0A]">{formatNaira(calc.totalPayable)}</span>
+                <span className="font-bold text-neutral-950">{formatUSD(calc.totalPayable)}</span>
               </div>
             </div>
           </div>
 
-          <div className="mt-6 pt-4 border-t border-[#E4E4E7]">
+          <div className="mt-6 pt-4 border-t border-neutral-100">
             {applied ? (
-              <div className="p-3 bg-[#0D5C3A]/10 border border-[#0D5C3A]/30 rounded-lg text-xs text-[#0D5C3A] font-medium flex items-center justify-center gap-2">
+              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-700 font-semibold flex items-center justify-center gap-2">
                 <Check className="w-4 h-4" />
                 <span>Pre-Approval Application Dispatched</span>
               </div>
@@ -142,13 +141,13 @@ export default function FinancingCalculator({ vehiclePrice }: FinancingCalculato
               <button
                 type="button"
                 onClick={handleApply}
-                className="btn-luxury-primary w-full text-xs py-3 rounded-lg text-center cursor-pointer"
+                className="w-full py-3 rounded-lg bg-neutral-950 hover:bg-neutral-800 text-white font-bold text-xs uppercase tracking-wider transition-colors shadow-sm"
               >
-                Apply for Concierge Pre-Approval
+                Apply for Dealership Pre-Approval
               </button>
             )}
-            <p className="text-[10px] text-neutral-400 text-center mt-2 font-mono">
-              Subject to tier-1 private wealth credit appraisal
+            <p className="text-[10px] text-neutral-400 text-center mt-2">
+              Subject to tier-1 US credit approval • Exact rates determined at contract signing
             </p>
           </div>
         </div>

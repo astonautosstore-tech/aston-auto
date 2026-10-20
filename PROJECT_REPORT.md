@@ -131,7 +131,7 @@ Aston Auto/
 │   │   ├── inventory/                                # Inventory catalogue components
 │   │   │   └── InventoryClient.tsx                   # Client component with brand, price, body filter dropdowns and car grid
 │   │   ├── layout/                                   # Global structural layout components
-│   │   │   ├── Footer.tsx                            # Universal layout footer with tagline, navigation links, and Levrix wordmark
+│   │   │   ├── Footer.tsx                            # Universal layout footer with tagline, navigation links, and Aston wordmark
 │   │   │   └── Navbar.tsx                            # Absolute navigation bar with brand logo, 4-dot menu trigger, and overlay nav
 │   │   ├── providers/                                # Context and third-party library providers
 │   │   │   └── SmoothScrollProvider.tsx              # Lenis smooth-scroll provider wrapper for inertia-based page scrolling
