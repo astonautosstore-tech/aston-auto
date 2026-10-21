@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   Car as CarIcon,
   MessageSquare,
@@ -20,9 +21,6 @@ import {
   Save,
   RefreshCw,
   Loader2,
-  Upload,
-  MoveLeft,
-  MoveRight,
   LayoutDashboard,
   Menu,
   User,
@@ -30,64 +28,8 @@ import {
 } from "lucide-react";
 import { Car, Comment, Inquiry, TestDrive, SiteSettings } from "@/types/database";
 import { createBrowserClient } from "@/lib/supabase/browser";
-import { formatUSD, ensureUUID } from "@/lib/utils";
+import { formatUSD } from "@/lib/utils";
 import AdminLogoutButton from "@/components/admin/AdminLogoutButton";
-
-// Client-side image compression using canvas
-async function compressImageToWebP(file: File): Promise<Blob> {
-  return new Promise((resolve, reject) => {
-    const img = new window.Image();
-    const url = URL.createObjectURL(file);
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      let { width, height } = img;
-      const MAX_DIM = 2000;
-      if (width > MAX_DIM || height > MAX_DIM) {
-        if (width > height) {
-          height = Math.round((height * MAX_DIM) / width);
-          width = MAX_DIM;
-        } else {
-          width = Math.round((width * MAX_DIM) / height);
-          height = MAX_DIM;
-        }
-      }
-      const canvas = document.createElement("canvas");
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        reject(new Error("Canvas context unavailable"));
-        return;
-      }
-      ctx.drawImage(img, 0, 0, width, height);
-      canvas.toBlob(
-        (blob) => {
-          if (blob) {
-            resolve(blob);
-          } else {
-            reject(new Error("Image compression failed"));
-          }
-        },
-        "image/webp",
-        0.82
-      );
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error("Failed to load image for compression"));
-    };
-    img.src = url;
-  });
-}
-
-function generateSlug(title: string): string {
-  return title
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, "")
-    .replace(/[\s_-]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
 
 function exportToCSV(filename: string, rows: unknown[]) {
   if (!rows || rows.length === 0) return;
@@ -117,9 +59,37 @@ function exportToCSV(filename: string, rows: unknown[]) {
 }
 
 export default function AdminDashboardClient() {
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab");
+
   const [activeTab, setActiveTab] = useState<
     "overview" | "cars" | "inquiries" | "test_drives" | "reviews" | "settings"
-  >("overview");
+  >(() => {
+    if (
+      tabParam === "cars" ||
+      tabParam === "inquiries" ||
+      tabParam === "test_drives" ||
+      tabParam === "reviews" ||
+      tabParam === "settings"
+    ) {
+      return tabParam;
+    }
+    return "overview";
+  });
+
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (
+      tab === "cars" ||
+      tab === "inquiries" ||
+      tab === "test_drives" ||
+      tab === "reviews" ||
+      tab === "settings" ||
+      tab === "overview"
+    ) {
+      setActiveTab(tab as typeof activeTab);
+    }
+  }, [searchParams]);
 
   // Live Data State
   const [loading, setLoading] = useState(true);
@@ -142,12 +112,7 @@ export default function AdminDashboardClient() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
-  // Car Edit / Add Modal State
-  const [isCarModalOpen, setIsCarModalOpen] = useState(false);
-  const [editingCar, setEditingCar] = useState<Partial<Car> | null>(null);
-  const [carSaving, setCarSaving] = useState(false);
-  const [uploadingImages, setUploadingImages] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+
 
   // Review reply state
   const [replyTextMap, setReplyTextMap] = useState<Record<string, string>>({});
@@ -222,149 +187,6 @@ export default function AdminDashboardClient() {
   };
 
   // ─── CAR OPERATIONS ───
-  const handleOpenAddCar = () => {
-    const newId = crypto.randomUUID();
-    setEditingCar({
-      id: newId,
-      title: "",
-      slug: "",
-      brand: "Aston Martin",
-      model: "",
-      year: new Date().getFullYear(),
-      price: 150000,
-      discount_price: null,
-      mileage: 0,
-      fuel_type: "Petrol",
-      transmission: "Automatic",
-      body_type: "Coupe",
-      engine: "4.0L Twin-Turbo V8",
-      horsepower: 503,
-      acceleration_0_100: 3.6,
-      color: "Onyx Black",
-      interior_color: "Obsidian Black Leather",
-      condition: "Certified Pre-Owned",
-      status: "available",
-      is_featured: false,
-      hero_image: "https://images.unsplash.com/photo-1617814076367-b759c7d7e738?auto=format&fit=crop&q=80&w=1200",
-      images: [],
-      features: ["Carbon Ceramic Brakes", "Bang & Olufsen Audio", "Sport Exhaust"],
-      description: "Exceptional specification, single-owner vehicle maintained to the highest standards.",
-    });
-    setIsCarModalOpen(true);
-  };
-
-  const handleOpenEditCar = (car: Car) => {
-    setEditingCar({ ...car });
-    setIsCarModalOpen(true);
-  };
-
-  const handleSaveCar = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingCar || !editingCar.title || !editingCar.slug) {
-      showToast('Title and Slug are required.', 'error');
-      return;
-    }
-
-    // Validate constraints
-    const year = editingCar.year ?? 2024;
-    if (year < 1900 || year > 2100) {
-      showToast('Year must be between 1900 and 2100.', 'error');
-      return;
-    }
-    const price = editingCar.price ?? 0;
-    if (price < 0) {
-      showToast('Price must be >= 0.', 'error');
-      return;
-    }
-    const discountPrice = editingCar.discount_price;
-    if (discountPrice !== null && discountPrice !== undefined && discountPrice >= price) {
-      showToast('Discount price must be less than the regular price.', 'error');
-      return;
-    }
-
-    setCarSaving(true);
-    try {
-      const supabase = createBrowserClient();
-
-      // Ensure car ID is a valid UUID
-      const carId = ensureUUID(editingCar.id);
-      if (editingCar.id !== carId) {
-        setEditingCar((prev) => (prev ? { ...prev, id: carId } : prev));
-      }
-
-      const hero =
-        editingCar.images && editingCar.images.length > 0
-          ? editingCar.images[0]
-          : editingCar.hero_image || '';
-
-      // Build explicit payload matching only real DB columns
-      const carPayload = {
-        title: editingCar.title,
-        slug: editingCar.slug,
-        brand: editingCar.brand || '',
-        model: editingCar.model || '',
-        year: year,
-        price: price,
-        discount_price: discountPrice ?? null,
-        mileage: editingCar.mileage ?? 0,
-        transmission: editingCar.transmission || 'Automatic',
-        fuel_type: editingCar.fuel_type || 'Petrol',
-        body_type: editingCar.body_type || '',
-        color: editingCar.color || '',
-        interior_color: editingCar.interior_color || null,
-        condition: editingCar.condition || 'Certified Pre-Owned',
-        engine: editingCar.engine || '',
-        acceleration_0_100: editingCar.acceleration_0_100 ?? null,
-        top_speed_kmh: editingCar.top_speed_kmh ?? null,
-        horsepower: editingCar.horsepower ?? null,
-        torque_nm: editingCar.torque_nm ?? null,
-        description: editingCar.description || '',
-        features: editingCar.features || [],
-        status: editingCar.status || 'available',
-        stock_quantity: editingCar.stock_quantity ?? 1,
-        is_featured: editingCar.is_featured ?? false,
-        hero_image: hero,
-        images: editingCar.images && editingCar.images.length > 0 ? editingCar.images : [hero],
-        updated_at: new Date().toISOString(),
-      };
-
-      const isNew = !cars.some((c) => c.id === carId);
-
-      let error;
-      if (isNew) {
-        // INSERT — include valid UUID id so storage folder matches
-        const { error: insertErr } = await supabase
-          .from('cars')
-          .insert({ id: carId, ...carPayload });
-        error = insertErr;
-      } else {
-        // UPDATE existing row
-        const { error: updateErr } = await supabase
-          .from('cars')
-          .update(carPayload)
-          .eq('id', carId);
-        error = updateErr;
-      }
-
-      if (error) {
-        console.error('[Admin] Save car error:', error);
-        const code = error.code ? ` [${error.code}]` : '';
-        showToast(`Save failed: ${error.message}${code}`, 'error');
-        return;
-      }
-
-      showToast(`Vehicle "${editingCar.title}" saved successfully.`);
-      setIsCarModalOpen(false);
-      await fetchAllData();
-      await triggerRevalidation(`/cars/${editingCar.slug}`);
-      await triggerRevalidation();
-    } catch (err: unknown) {
-      showError('Save car', err);
-    } finally {
-      setCarSaving(false);
-    }
-  };
-
   const handleDeleteCar = async (id: string, title: string) => {
     if (!confirm(`Are you sure you want to permanently delete "${title}"?`)) return;
 
@@ -384,118 +206,6 @@ export default function AdminDashboardClient() {
   };
 
   // Multi-file Image Upload with Client-Side Canvas Compression
-  const handleImageFilesSelected = async (files: FileList | null) => {
-    if (!files || files.length === 0 || !editingCar) return;
-
-    setUploadingImages(true);
-    try {
-      const supabase = createBrowserClient();
-      const carId = ensureUUID(editingCar.id);
-      if (editingCar.id !== carId) {
-        setEditingCar((prev) => (prev ? { ...prev, id: carId } : prev));
-      }
-      const uploadedUrls: string[] = [];
-
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        const compressedBlob = await compressImageToWebP(file);
-        const safeBaseName = file.name
-          .replace(/[^a-zA-Z0-9.-]/g, "_")
-          .replace(/\.[^/.]+$/, ".webp");
-        const path = `cars/${carId}/${Date.now()}-${safeBaseName}`;
-
-        const { error: uploadErr } = await supabase.storage
-          .from("car-images")
-          .upload(path, compressedBlob, {
-            contentType: "image/webp",
-            upsert: true,
-          });
-
-        if (uploadErr) {
-          console.error('[Admin] Storage upload error:', uploadErr);
-          const code = uploadErr.statusCode ? ` [${uploadErr.statusCode}]` : '';
-          showToast(`Upload failed for "${file.name}": ${uploadErr.message}${code}`, 'error');
-          continue;
-        }
-
-        const { data: urlData } = supabase.storage.from("car-images").getPublicUrl(path);
-        if (urlData?.publicUrl) {
-          uploadedUrls.push(urlData.publicUrl);
-        }
-      }
-
-      const existingImages = editingCar.images || [];
-      const updatedImages = [...existingImages, ...uploadedUrls];
-      setEditingCar({
-        ...editingCar,
-        images: updatedImages,
-        hero_image: updatedImages[0] || editingCar.hero_image,
-      });
-
-      if (uploadedUrls.length > 0) {
-        showToast(`Uploaded ${uploadedUrls.length} image(s) successfully.`);
-      }
-    } catch (err: unknown) {
-      showError('Image upload', err);
-    } finally {
-      setUploadingImages(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    }
-  };
-
-  const handleSetHeroImage = (url: string) => {
-    if (!editingCar?.images) return;
-    const remaining = editingCar.images.filter((img) => img !== url);
-    setEditingCar({
-      ...editingCar,
-      hero_image: url,
-      images: [url, ...remaining],
-    });
-  };
-
-  const handleMoveImage = (index: number, direction: "left" | "right") => {
-    if (!editingCar?.images) return;
-    const images = [...editingCar.images];
-    const targetIdx = direction === "left" ? index - 1 : index + 1;
-    if (targetIdx < 0 || targetIdx >= images.length) return;
-
-    const temp = images[index];
-    images[index] = images[targetIdx];
-    images[targetIdx] = temp;
-
-    setEditingCar({
-      ...editingCar,
-      images,
-      hero_image: images[0],
-    });
-  };
-
-  const handleDeleteImage = async (url: string) => {
-    if (!editingCar?.images) return;
-    const newImages = editingCar.images.filter((img) => img !== url);
-
-    // Try deleting from Supabase Storage if it belongs to car-images bucket
-    try {
-      if (url.includes("/car-images/")) {
-        const parts = url.split("/car-images/");
-        if (parts[1]) {
-          const storagePath = parts[1].split("?")[0];
-          const supabase = createBrowserClient();
-          await supabase.storage.from("car-images").remove([storagePath]);
-        }
-      }
-    } catch (e) {
-      console.warn("Storage deletion error:", e);
-    }
-
-    setEditingCar({
-      ...editingCar,
-      images: newImages,
-      hero_image: newImages[0] || "",
-    });
-  };
-
-  // ─── INQUIRIES OPERATIONS ───
   const handleUpdateInquiryStatus = async (
     id: string,
     status: 'new' | 'contacted' | 'resolved'
@@ -757,13 +467,13 @@ export default function AdminDashboardClient() {
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={handleOpenAddCar}
-            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-neutral-950 text-white text-xs font-bold hover:bg-neutral-800 transition-colors shadow-sm cursor-pointer"
+          <Link
+            href="/backdoor/cars/new"
+            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-neutral-950 text-white text-xs font-bold hover:bg-neutral-800 transition-colors shadow-sm"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Add Car</span>
-          </button>
+          </Link>
         </div>
       </div>
 
@@ -902,13 +612,13 @@ export default function AdminDashboardClient() {
               <span>{revalidating ? "Revalidating..." : "Clear Cache"}</span>
             </button>
 
-            <button
-              onClick={handleOpenAddCar}
+            <Link
+              href="/backdoor/cars/new"
               className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-neutral-950 text-white text-xs font-bold uppercase tracking-wider hover:bg-neutral-800 shadow-sm transition-all cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Add Vehicle</span>
-            </button>
+            </Link>
           </div>
         </header>
 
@@ -1194,8 +904,15 @@ export default function AdminDashboardClient() {
                 <Search className="w-4 h-4 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2" />
               </div>
 
-              <div className="flex items-center gap-3 text-xs text-neutral-500">
-                <span>Showing {filteredCars.length} of {cars.length} cars</span>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-neutral-500">Showing {filteredCars.length} of {cars.length} cars</span>
+                <Link
+                  href="/backdoor/cars/new"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-neutral-950 text-white text-xs font-bold uppercase tracking-wider hover:bg-neutral-800 shadow-sm transition-all"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Add Vehicle</span>
+                </Link>
               </div>
             </div>
 
@@ -1286,13 +1003,13 @@ export default function AdminDashboardClient() {
                               <ExternalLink className="w-4 h-4" />
                             </Link>
 
-                            <button
-                              onClick={() => handleOpenEditCar(car)}
-                              className="p-1.5 rounded-lg text-neutral-600 hover:text-neutral-950 hover:bg-neutral-100"
+                            <Link
+                              href={`/backdoor/cars/${car.id}/edit`}
+                              className="p-1.5 rounded-lg text-neutral-600 hover:text-neutral-950 hover:bg-neutral-100 transition-colors"
                               title="Edit Vehicle"
                             >
                               <Edit className="w-4 h-4" />
-                            </button>
+                            </Link>
 
                             <button
                               onClick={() => handleDeleteCar(car.id, car.title)}
@@ -1789,481 +1506,6 @@ export default function AdminDashboardClient() {
                   >
                     <Save className="w-4 h-4" />
                     <span>Save Dealership Settings</span>
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* ─── CAR ADD / EDIT MODAL ─── */}
-        {isCarModalOpen && editingCar && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <div className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-white rounded-2xl border border-neutral-200 p-6 sm:p-8 shadow-2xl space-y-6">
-              <button
-                onClick={() => setIsCarModalOpen(false)}
-                className="absolute top-5 right-5 p-2 rounded-full text-neutral-400 hover:text-neutral-900 hover:bg-neutral-100"
-              >
-                <X className="w-5 h-5" />
-              </button>
-
-              <div>
-                <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400 block mb-1">
-                  Catalog Inventory
-                </span>
-                <h3 className="text-xl sm:text-2xl font-extrabold text-neutral-950">
-                  {editingCar.title ? `Edit: ${editingCar.title}` : "Add New Vehicle"}
-                </h3>
-              </div>
-
-              <form onSubmit={handleSaveCar} className="space-y-6">
-                {/* 1. Title & Slug */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-neutral-700 uppercase tracking-wider mb-1">
-                      Vehicle Title *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. Aston Martin DB12 Coupe"
-                      value={editingCar.title || ""}
-                      onChange={(e) => {
-                        const newTitle = e.target.value;
-                        setEditingCar({
-                          ...editingCar,
-                          title: newTitle,
-                          slug: editingCar.slug ? editingCar.slug : generateSlug(newTitle),
-                        });
-                      }}
-                      className="w-full bg-white border border-neutral-300 rounded-lg px-3.5 py-2 text-sm text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-950"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-neutral-700 uppercase tracking-wider mb-1">
-                      URL Slug *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="aston-martin-db12-coupe"
-                      value={editingCar.slug || ""}
-                      onChange={(e) =>
-                        setEditingCar({ ...editingCar, slug: generateSlug(e.target.value) })
-                      }
-                      className="w-full bg-white border border-neutral-300 rounded-lg px-3.5 py-2 text-sm text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-950 font-mono"
-                    />
-                  </div>
-                </div>
-
-                {/* 2. Brand, Model, Year, Condition */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-neutral-700 uppercase tracking-wider mb-1">
-                      Brand *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={editingCar.brand || ""}
-                      onChange={(e) => setEditingCar({ ...editingCar, brand: e.target.value })}
-                      className="w-full bg-white border border-neutral-300 rounded-lg px-3.5 py-2 text-sm text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-950"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-neutral-700 uppercase tracking-wider mb-1">
-                      Model *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={editingCar.model || ""}
-                      onChange={(e) => setEditingCar({ ...editingCar, model: e.target.value })}
-                      className="w-full bg-white border border-neutral-300 rounded-lg px-3.5 py-2 text-sm text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-950"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-neutral-700 uppercase tracking-wider mb-1">
-                      Year *
-                    </label>
-                    <input
-                      type="number"
-                      required
-                      value={editingCar.year || 2024}
-                      onChange={(e) =>
-                        setEditingCar({ ...editingCar, year: parseInt(e.target.value) || 2024 })
-                      }
-                      className="w-full bg-white border border-neutral-300 rounded-lg px-3.5 py-2 text-sm text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-950"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-neutral-700 uppercase tracking-wider mb-1">
-                      Condition
-                    </label>
-                    <select
-                      value={editingCar.condition || "Certified Pre-Owned"}
-                      onChange={(e) =>
-                        setEditingCar({
-                          ...editingCar,
-                          condition: e.target.value as "Brand New" | "Certified Pre-Owned" | "Classic / Collector",
-                        })
-                      }
-                      className="w-full bg-white border border-neutral-300 rounded-lg px-3.5 py-2 text-sm text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-950"
-                    >
-                      <option value="Certified Pre-Owned">Certified Pre-Owned</option>
-                      <option value="Brand New">Brand New</option>
-                      <option value="Classic / Collector">Classic / Collector</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* 3. Pricing & Status */}
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 p-4 bg-[#F9FAFB] rounded-xl border border-neutral-200">
-                  <div>
-                    <label className="block text-xs font-bold text-neutral-700 uppercase tracking-wider mb-1">
-                      Price (USD) *
-                    </label>
-                    <input
-                      type="number"
-                      required
-                      value={editingCar.price || 0}
-                      onChange={(e) =>
-                        setEditingCar({ ...editingCar, price: parseFloat(e.target.value) || 0 })
-                      }
-                      className="w-full bg-white border border-neutral-300 rounded-lg px-3.5 py-2 text-sm text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-950"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-neutral-700 uppercase tracking-wider mb-1">
-                      Discount Price (USD)
-                    </label>
-                    <input
-                      type="number"
-                      placeholder="Optional"
-                      value={editingCar.discount_price ?? ""}
-                      onChange={(e) =>
-                        setEditingCar({
-                          ...editingCar,
-                          discount_price: e.target.value ? parseFloat(e.target.value) : null,
-                        })
-                      }
-                      className="w-full bg-white border border-neutral-300 rounded-lg px-3.5 py-2 text-sm text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-950"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-neutral-700 uppercase tracking-wider mb-1">
-                      Inventory Status
-                    </label>
-                    <select
-                      value={editingCar.status || "available"}
-                      onChange={(e) =>
-                        setEditingCar({
-                          ...editingCar,
-                          status: e.target.value as "available" | "reserved" | "sold",
-                        })
-                      }
-                      className="w-full bg-white border border-neutral-300 rounded-lg px-3.5 py-2 text-sm text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-950"
-                    >
-                      <option value="available">Available</option>
-                      <option value="reserved">Reserved</option>
-                      <option value="sold">Sold</option>
-                    </select>
-                  </div>
-
-                  <div className="flex items-center gap-3 pt-5">
-                    <input
-                      type="checkbox"
-                      id="is_featured"
-                      checked={!!editingCar.is_featured}
-                      onChange={(e) =>
-                        setEditingCar({ ...editingCar, is_featured: e.target.checked })
-                      }
-                      className="w-4 h-4 rounded text-neutral-950 focus:ring-neutral-950"
-                    />
-                    <label
-                      htmlFor="is_featured"
-                      className="text-xs font-bold text-neutral-900 uppercase tracking-wider"
-                    >
-                      Show in Featured
-                    </label>
-                  </div>
-                </div>
-
-                {/* 4. Specifications */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-neutral-700 uppercase tracking-wider mb-1">
-                      Horsepower (HP)
-                    </label>
-                    <input
-                      type="number"
-                      value={editingCar.horsepower || 0}
-                      onChange={(e) =>
-                        setEditingCar({ ...editingCar, horsepower: parseInt(e.target.value) || 0 })
-                      }
-                      className="w-full bg-white border border-neutral-300 rounded-lg px-3.5 py-2 text-sm text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-950"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-neutral-700 uppercase tracking-wider mb-1">
-                      0-60 mph (sec)
-                    </label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={editingCar.acceleration_0_100 || 0}
-                      onChange={(e) =>
-                        setEditingCar({
-                          ...editingCar,
-                          acceleration_0_100: parseFloat(e.target.value) || 0,
-                        })
-                      }
-                      className="w-full bg-white border border-neutral-300 rounded-lg px-3.5 py-2 text-sm text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-950"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-neutral-700 uppercase tracking-wider mb-1">
-                      Mileage (mi)
-                    </label>
-                    <input
-                      type="number"
-                      value={editingCar.mileage || 0}
-                      onChange={(e) =>
-                        setEditingCar({ ...editingCar, mileage: parseInt(e.target.value) || 0 })
-                      }
-                      className="w-full bg-white border border-neutral-300 rounded-lg px-3.5 py-2 text-sm text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-950"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-neutral-700 uppercase tracking-wider mb-1">
-                      Engine
-                    </label>
-                    <input
-                      type="text"
-                      value={editingCar.engine || ""}
-                      onChange={(e) => setEditingCar({ ...editingCar, engine: e.target.value })}
-                      className="w-full bg-white border border-neutral-300 rounded-lg px-3.5 py-2 text-sm text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-950"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-neutral-700 uppercase tracking-wider mb-1">
-                      Transmission
-                    </label>
-                    <input
-                      type="text"
-                      value={editingCar.transmission || "Automatic"}
-                      onChange={(e) =>
-                        setEditingCar({ ...editingCar, transmission: e.target.value })
-                      }
-                      className="w-full bg-white border border-neutral-300 rounded-lg px-3.5 py-2 text-sm text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-950"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-neutral-700 uppercase tracking-wider mb-1">
-                      Body Type
-                    </label>
-                    <input
-                      type="text"
-                      value={editingCar.body_type || "Coupe"}
-                      onChange={(e) => setEditingCar({ ...editingCar, body_type: e.target.value })}
-                      className="w-full bg-white border border-neutral-300 rounded-lg px-3.5 py-2 text-sm text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-950"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-neutral-700 uppercase tracking-wider mb-1">
-                      Exterior Color
-                    </label>
-                    <input
-                      type="text"
-                      value={editingCar.color || ""}
-                      onChange={(e) => setEditingCar({ ...editingCar, color: e.target.value })}
-                      className="w-full bg-white border border-neutral-300 rounded-lg px-3.5 py-2 text-sm text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-950"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-neutral-700 uppercase tracking-wider mb-1">
-                      Interior Color
-                    </label>
-                    <input
-                      type="text"
-                      value={editingCar.interior_color || ""}
-                      onChange={(e) =>
-                        setEditingCar({ ...editingCar, interior_color: e.target.value })
-                      }
-                      className="w-full bg-white border border-neutral-300 rounded-lg px-3.5 py-2 text-sm text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-950"
-                    />
-                  </div>
-                </div>
-
-                {/* 5. MULTI-FILE IMAGE UPLOAD & GALLERY MANAGER */}
-                <div className="p-5 bg-neutral-50 rounded-2xl border border-neutral-200 space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <div>
-                      <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-950">
-                        Vehicle Images & Supabase Storage
-                      </h4>
-                      <p className="text-[11px] text-neutral-500">
-                        Images are resized on the fly and saved directly to the public &apos;car-images&apos; bucket.
-                      </p>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="file"
-                        ref={fileInputRef}
-                        multiple
-                        accept="image/*"
-                        onChange={(e) => handleImageFilesSelected(e.target.files)}
-                        className="hidden"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={uploadingImages}
-                        className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-neutral-900 text-white text-xs font-bold hover:bg-neutral-800 disabled:opacity-50"
-                      >
-                        {uploadingImages ? (
-                          <>
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            <span>Uploading & Compressing...</span>
-                          </>
-                        ) : (
-                          <>
-                            <Upload className="w-3.5 h-3.5" />
-                            <span>Upload Photos</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Image Grid */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
-                    {(editingCar.images || []).map((imgUrl, idx) => {
-                      const isHero = idx === 0 || imgUrl === editingCar.hero_image;
-                      return (
-                        <div
-                          key={idx}
-                          className={`relative aspect-[16/10] rounded-xl overflow-hidden border-2 bg-neutral-200 group ${
-                            isHero ? "border-emerald-600 ring-2 ring-emerald-600/20" : "border-neutral-200"
-                          }`}
-                        >
-                          <Image
-                            src={imgUrl}
-                            alt={`Car photo ${idx + 1}`}
-                            fill
-                            sizes="(max-width: 768px) 50vw, 160px"
-                            className="object-cover"
-                          />
-
-                          {isHero && (
-                            <span className="absolute top-1.5 left-1.5 px-2 py-0.5 rounded text-[9px] font-bold uppercase bg-emerald-600 text-white">
-                              Hero Photo
-                            </span>
-                          )}
-
-                          {/* Hover Controls */}
-                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 p-2">
-                            {idx > 0 && (
-                              <button
-                                type="button"
-                                onClick={() => handleMoveImage(idx, "left")}
-                                className="p-1 rounded bg-white/90 text-neutral-900 hover:bg-white"
-                                title="Move Left"
-                              >
-                                <MoveLeft className="w-3 h-3" />
-                              </button>
-                            )}
-
-                            {!isHero && (
-                              <button
-                                type="button"
-                                onClick={() => handleSetHeroImage(imgUrl)}
-                                className="px-2 py-1 rounded bg-white text-neutral-900 text-[10px] font-bold hover:bg-neutral-100"
-                              >
-                                Set Hero
-                              </button>
-                            )}
-
-                            {idx < (editingCar.images?.length || 0) - 1 && (
-                              <button
-                                type="button"
-                                onClick={() => handleMoveImage(idx, "right")}
-                                className="p-1 rounded bg-white/90 text-neutral-900 hover:bg-white"
-                                title="Move Right"
-                              >
-                                <MoveRight className="w-3 h-3" />
-                              </button>
-                            )}
-
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteImage(imgUrl)}
-                              className="p-1 rounded bg-red-600 text-white hover:bg-red-700"
-                              title="Delete Photo"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* 6. Description */}
-                <div>
-                  <label className="block text-xs font-bold text-neutral-700 uppercase tracking-wider mb-1">
-                    Vehicle Description
-                  </label>
-                  <textarea
-                    rows={4}
-                    value={editingCar.description || ""}
-                    onChange={(e) => setEditingCar({ ...editingCar, description: e.target.value })}
-                    className="w-full bg-white border border-neutral-300 rounded-lg px-3.5 py-2.5 text-sm text-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-950 resize-none"
-                  />
-                </div>
-
-                <div className="pt-4 border-t border-neutral-200 flex items-center justify-end gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setIsCarModalOpen(false)}
-                    className="px-5 py-2.5 rounded-xl border border-neutral-300 text-neutral-700 text-xs font-semibold hover:bg-neutral-50"
-                  >
-                    Cancel
-                  </button>
-
-                  <button
-                    type="submit"
-                    disabled={carSaving || uploadingImages}
-                    className="px-6 py-2.5 rounded-xl bg-neutral-950 text-white text-xs font-bold uppercase tracking-wider hover:bg-neutral-800 disabled:opacity-50 flex items-center gap-2"
-                  >
-                    {carSaving ? (
-                      <>
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        <span>Saving Vehicle...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Save className="w-3.5 h-3.5" />
-                        <span>Save Vehicle Listing</span>
-                      </>
-                    )}
                   </button>
                 </div>
               </form>

@@ -95,78 +95,7 @@ export const BLOG_ARTICLES: BlogArticle[] = [
       },
     ],
   },
-  {
-    slug: "how-your-credit-score-impacts-interest-rate",
-    title: "How Your Credit Score Impacts Your Interest Rate",
-    excerpt: "Understanding how lenders assess credit tiers when financing luxury and performance vehicles, and how to optimize your rate.",
-    category: "Financing",
-    date: "May 4, 2026",
-    readTime: "6 min read",
-    coverImage: "https://images.unsplash.com/photo-1541348263662-e0c86437ac7b?auto=format&fit=crop&w=1800&q=85",
-    sections: [
-      {
-        heading: "The Mechanics of Automotive Underwriting",
-        paragraph: "When securing structured financing for a high-value automobile, your credit rating dictates more than loan approval—it establishes the baseline cost of capital over your loan lifecycle. Prime lenders evaluate credit scores to categorize borrowers into distinct risk brackets, directly influencing APR percentage rates.",
-      },
-      {
-        heading: "Understanding the Tiers",
-        bullets: [
-          {
-            label: "Super-Prime (780 - 850)",
-            text: "Unlocks tier-one institutional rates, maximum loan-to-value allowances, and preferential bespoke term lengths.",
-          },
-          {
-            label: "Prime (660 - 779)",
-            text: "Qualifies for competitive dealer financing packages with modest down-payment flexibility.",
-          },
-          {
-            label: "Non-Prime (<660)",
-            text: "Often requires increased equity capital up-front or collateral backing to balance elevated APR metrics.",
-          },
-        ],
-      },
-      {
-        heading: "Strategic Rate Reduction",
-        paragraph: "Before applying for luxury acquisition financing, lowering outstanding revolving debt and reviewing your credit bureau reports for discrepancies can shift you into a higher tier, potentially saving tens of thousands in interest expense.",
-      },
-    ],
-  },
-  {
-    slug: "advanced-driver-assistance-systems-adas",
-    title: "Advanced Driver Assistance Systems (ADAS) Explained",
-    excerpt: "From LiDAR sensor fusion to Level 2+ semi-autonomous highway cruising, discover how cutting-edge ADAS safeguards modern vehicles.",
-    category: "Technology",
-    date: "May 2, 2026",
-    readTime: "8 min read",
-    coverImage: "https://images.unsplash.com/photo-1611245453086-45550a1df230?auto=format&fit=crop&w=1800&q=85",
-    sections: [
-      {
-        heading: "The Evolution of Autonomous Co-Piloting",
-        paragraph: "Advanced Driver Assistance Systems (ADAS) represent the convergence of high-definition radar, stereo camera vision, and machine learning computation. What began as simple anti-lock braking has blossomed into a comprehensive protective cocoon that constantly scans 360 degrees around your vehicle.",
-      },
-      {
-        heading: "Core Systems in Contemporary Supercars",
-        bullets: [
-          {
-            label: "Adaptive Cruise with Stop & Go",
-            text: "Maintains pinpoint radar headway even in dense urban stop-and-start traffic without requiring pedal intervention.",
-          },
-          {
-            label: "Active Lane Centering & Evasive Steer",
-            text: "Applies gentle corrective torque to keep the vehicle positioned precisely between road demarcations.",
-          },
-          {
-            label: "Cross-Traffic Blind Spot Intervention",
-            text: "Utilizes millimeter-wave radar to alert and intervene against oncoming hazards when reversing from obscured parking bays.",
-          },
-        ],
-      },
-      {
-        heading: "The Discerning Driver's Safeguard",
-        paragraph: "While active assistance aids driver fatigue on cross-country road trips, modern sports car engineers ensure these systems can be dialled down or completely deactivated on closed track circuits to preserve raw, unadulterated mechanical engagement.",
-      },
-    ],
-  },
+  
   {
     slug: "ultimate-checklist-pre-owned-luxury-car",
     title: "The Ultimate Checklist for Buying a Pre-Owned Luxury Car",
