@@ -4,8 +4,16 @@ import { NextResponse, type NextRequest } from "next/server";
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // Seamlessly redirect any legacy /admin URLs to /backdoor
+  if (pathname === "/admin" || pathname.startsWith("/admin/")) {
+    const targetPath = pathname.replace(/^\/admin/, "/backdoor");
+    const targetUrl = new URL(targetPath, request.url);
+    targetUrl.search = request.nextUrl.search;
+    return NextResponse.redirect(targetUrl);
+  }
+
   // Allow the login page itself to pass through
-  if (pathname === "/admin/login") {
+  if (pathname === "/backdoor/login") {
     return NextResponse.next();
   }
 
@@ -19,7 +27,7 @@ export async function proxy(request: NextRequest) {
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || !supabaseAnonKey) {
-    const loginUrl = new URL("/admin/login", request.url);
+    const loginUrl = new URL("/backdoor/login", request.url);
     loginUrl.searchParams.set("error", "missing_config");
     return NextResponse.redirect(loginUrl);
   }
@@ -46,21 +54,30 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    const loginUrl = new URL("/admin/login", request.url);
+    const loginUrl = new URL("/backdoor/login", request.url);
     loginUrl.searchParams.set("redirect", pathname);
     return NextResponse.redirect(loginUrl);
   }
 
   // Check if user is registered in admin_users
-  const { data: adminUser } = await supabase
+  const { data: adminUser, error: adminError } = await supabase
     .from("admin_users")
-    .select("id")
-    .eq("id", user.id)
-    .single();
+    .select("user_id")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (adminError) {
+    console.error("[proxy] Supabase admin_users check error:", adminError.message);
+    const loginUrl = new URL("/backdoor/login", request.url);
+    loginUrl.searchParams.set("error", "query_failed");
+    loginUrl.searchParams.set("msg", adminError.message);
+    return NextResponse.redirect(loginUrl);
+  }
 
   if (!adminUser) {
-    const loginUrl = new URL("/admin/login", request.url);
-    loginUrl.searchParams.set("error", "unauthorized");
+    console.warn(`[proxy] User ${user.email} (${user.id}) signed in but no row in admin_users`);
+    const loginUrl = new URL("/backdoor/login", request.url);
+    loginUrl.searchParams.set("error", "not_admin");
     return NextResponse.redirect(loginUrl);
   }
 
@@ -68,5 +85,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin", "/admin/:path*"],
+  matcher: ["/backdoor", "/backdoor/:path*", "/admin", "/admin/:path*"],
 };

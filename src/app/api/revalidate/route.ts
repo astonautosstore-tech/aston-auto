@@ -17,11 +17,19 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify admin_users membership
-    const { data: adminRecord } = await supabase
+    const { data: adminRecord, error: adminError } = await supabase
       .from("admin_users")
-      .select("id")
-      .eq("id", user.id)
-      .single();
+      .select("user_id")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (adminError) {
+      console.error("[revalidate] Supabase admin_users check error:", adminError.message);
+      return NextResponse.json(
+        { error: `Database error: ${adminError.message}` },
+        { status: 500 }
+      );
+    }
 
     if (!adminRecord) {
       return NextResponse.json(

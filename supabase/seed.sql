@@ -10,16 +10,16 @@ INSERT INTO public.site_settings (
   social_links, hero_headline, hero_subheadline, updated_at
 ) VALUES (
   1,
-  'Aston',
+  'Aston Auto Stores',
   'Curators of Extraordinary Motoring',
   '+1 448 226 4666',
   '+1 448 226 4666',
   'concierge@astonautostores.com',
-  '450 North Rodeo Drive, Beverly Hills, CA 90210',
-  'Monday – Saturday: 9:00 AM – 7:00 PM (By Appointment)',
+  '',
+  'Monday – Saturday: 9:00 AM – 7:00 PM EST (By Appointment)',
   '{"instagram":"https://instagram.com/astonautostores","twitter":"https://twitter.com/astonautostores","youtube":"https://youtube.com/@astonautostores","linkedin":"https://linkedin.com/company/aston-auto-stores"}'::jsonb,
-  'The Apex of Automotive Artistry',
-  'North America''s premier curated portfolio of supercars and bespoke grand tourers.',
+  'Curated Collection of Extraordinary Motorcars',
+  'North America''s premier collection of performance, luxury, and exotic motorcars.',
   NOW()
 ) ON CONFLICT (id) DO UPDATE SET
   company_name = EXCLUDED.company_name,
@@ -1346,7 +1346,7 @@ INSERT INTO public.comments (
   'col-aston-dbs',
   'Harrison Vance',
   5,
-  'The specification and carbon aerokit on this DBS 770 Ultimate is astonishing. Delivery to our Beverly Hills residence was seamless and white-glove.',
+  'The specification and carbon aerokit on this DBS 770 Ultimate is astonishing. Delivery to our residence was seamless and white-glove.',
   'approved',
   'A pleasure serving you, Harrison. May every journey with the V12 be extraordinary.',
   NOW() - INTERVAL '4 days',

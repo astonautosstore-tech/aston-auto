@@ -49,7 +49,7 @@ export async function generateMetadata({ params }: CarPageProps): Promise<Metada
 
   return {
     title: `${car.year} ${car.title} | Aston`,
-    description: `Acquire the ${car.title} (${priceFormatted}) at Aston Beverly Hills. ${car.horsepower} HP, 0-60 mph in ${car.acceleration_0_100}s, ${car.color}. Available with certified inspection and nationwide enclosed delivery.`,
+    description: `Acquire the ${car.title} (${priceFormatted}) at Aston Auto Stores. ${car.horsepower} HP, 0-60 mph in ${car.acceleration_0_100}s, ${car.color}. Available with certified inspection and nationwide enclosed delivery.`,
     openGraph: {
       title: `${car.title} — Aston`,
       description: car.description,
@@ -115,8 +115,7 @@ export default async function CarDetailPage({ params }: CarPageProps) {
           : "https://schema.org/PreOrder",
       seller: {
         "@type": "AutoDealer",
-        name: "Aston",
-        address: "450 North Rodeo Drive, Beverly Hills, CA 90210",
+        name: "Aston Auto Stores",
       },
     },
   };

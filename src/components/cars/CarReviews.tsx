@@ -2,10 +2,9 @@
 
 import { useState } from "react";
 import { z } from "zod";
-import { Star, MessageSquare, ShieldCheck, CheckCircle2, AlertCircle } from "lucide-react";
+import { Star, ShieldCheck, CheckCircle2, AlertCircle } from "lucide-react";
 import { Comment } from "@/types/database";
 import { storeApi } from "@/lib/supabase/client";
-import { soundEngine } from "@/lib/sound";
 
 const reviewSchema = z.object({
   name: z.string().trim().min(2, "Name must be at least 2 characters").max(100, "Name cannot exceed 100 characters"),
@@ -82,33 +81,32 @@ export default function CarReviews({ carId, initialComments = [] }: CarReviewsPr
         localStorage.setItem(COOLDOWN_KEY, Date.now().toString());
       }
 
-      soundEngine.playSuccessChime();
       setSubmitted(true);
       setName("");
       setBody("");
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error submitting review:", err);
-      setErrorMessage(err?.message || "Unable to submit review. Please try again.");
+      const msg = err instanceof Error ? err.message : "Unable to submit review. Please try again.";
+      setErrorMessage(msg);
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <div className="py-12 border-t border-neutral-200">
-      <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
+    <div className="py-8">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 gap-4">
         <div>
-          <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-[0.2em] text-neutral-500 mb-2 font-semibold">
-            <MessageSquare className="w-4 h-4 text-neutral-900" />
-            <span>Verified Connoisseur Reviews</span>
-          </div>
-          <h3 className="font-display font-extrabold text-2xl sm:text-3xl tracking-tight text-neutral-950 uppercase">
-            Client Impressions
+          <span className="text-xs uppercase tracking-[0.14em] text-[#6B6B6B] block mb-2">
+            Client Feedback
+          </span>
+          <h3 className="text-2xl font-medium tracking-tight text-[#0A0A0A]">
+            Vehicle Reviews &amp; Impressions
           </h3>
         </div>
 
-        <div className="flex items-center gap-3 bg-neutral-50 px-4 py-2.5 rounded-xl border border-neutral-200">
-          <div className="flex text-amber-500">
+        <div className="flex items-center gap-2.5 bg-[#FAFAFA] px-3.5 py-2 rounded-lg border border-[#E8E8E8]">
+          <div className="flex text-[#0A0A0A]">
             {[1, 2, 3, 4, 5].map((s) => (
               <Star
                 key={s}
@@ -182,33 +180,31 @@ export default function CarReviews({ carId, initialComments = [] }: CarReviewsPr
       </div>
 
       {/* Review Submission Form */}
-      <div className="p-6 sm:p-8 rounded-2xl bg-[#F9FAFB] border border-neutral-200">
+      <div className="p-6 sm:p-8 rounded-2xl bg-[#FAFAFA] border border-[#E8E8E8]">
         {submitted ? (
           <div className="py-6 text-center space-y-3">
-            <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto">
-              <CheckCircle2 className="w-6 h-6" />
-            </div>
-            <h4 className="font-bold text-base text-neutral-950">
-              Thanks, your review will appear after approval.
+            <CheckCircle2 className="w-8 h-8 text-emerald-600 mx-auto" strokeWidth={1.5} />
+            <h4 className="text-base font-medium text-[#0A0A0A]">
+              Thank you. Your review has been submitted for verification.
             </h4>
-            <p className="text-xs text-neutral-600 max-w-sm mx-auto">
-              Our editorial moderation desk reviews submissions to ensure authentic verified feedback.
+            <p className="text-xs text-[#6B6B6B] max-w-sm mx-auto">
+              Our moderation desk reviews submissions to ensure authentic verified feedback before publication.
             </p>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <span className="text-xs font-mono font-bold uppercase tracking-wider text-neutral-500 block mb-1">
-                Share Your Provenance Experience
+              <span className="text-xs uppercase tracking-wider text-[#6B6B6B] block mb-1">
+                Client Feedback
               </span>
-              <h4 className="font-display font-bold text-lg text-neutral-950 uppercase tracking-tight">
-                Leave a Verified Review
+              <h4 className="text-lg font-medium text-[#0A0A0A]">
+                Submit a Review
               </h4>
             </div>
 
             {errorMessage && (
               <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-xs flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0" />
+                <AlertCircle className="w-4 h-4 shrink-0" strokeWidth={1.5} />
                 <span>{errorMessage}</span>
               </div>
             )}
@@ -228,8 +224,8 @@ export default function CarReviews({ carId, initialComments = [] }: CarReviewsPr
 
             {/* Rating Selector */}
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-neutral-700 mb-1.5">
-                Your Rating
+              <label className="block text-xs text-[#6B6B6B] mb-1.5">
+                Rating
               </label>
               <div className="flex items-center gap-1.5">
                 {[1, 2, 3, 4, 5].map((s) => (
@@ -237,15 +233,14 @@ export default function CarReviews({ carId, initialComments = [] }: CarReviewsPr
                     key={s}
                     type="button"
                     onClick={() => setRating(s)}
-                    className="p-1 text-neutral-300 hover:text-amber-500 transition-colors focus:outline-none"
+                    className="p-0.5 text-[#0A0A0A] focus:outline-none"
                     aria-label={`Rate ${s} out of 5 stars`}
                   >
                     <Star
-                      className={`w-6 h-6 transition-all ${
-                        s <= rating
-                          ? "fill-amber-500 text-amber-500 scale-110"
-                          : "text-neutral-300"
+                      className={`w-5 h-5 ${
+                        s <= rating ? "fill-current text-[#0A0A0A]" : "text-[#CCCCCC]"
                       }`}
+                      strokeWidth={1}
                     />
                   </button>
                 ))}
@@ -254,42 +249,42 @@ export default function CarReviews({ carId, initialComments = [] }: CarReviewsPr
 
             {/* Name Input */}
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-neutral-700 mb-1.5">
-                Your Name *
+              <label className="block text-xs text-[#6B6B6B] mb-1.5">
+                Full Name *
               </label>
               <input
                 type="text"
                 required
                 maxLength={100}
-                placeholder="e.g. Sterling Vance"
+                placeholder="e.g. David Vance"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full bg-white border border-neutral-300 rounded-xl px-4 py-2.5 text-xs sm:text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-950"
+                className="w-full bg-white border border-[#E8E8E8] rounded-lg px-3.5 py-2.5 text-xs sm:text-sm text-[#0A0A0A] placeholder:text-[#6B6B6B] focus:outline-none focus:border-[#0A0A0A]"
               />
             </div>
 
             {/* Review Body */}
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-neutral-700 mb-1.5">
-                Review Details *
+              <label className="block text-xs text-[#6B6B6B] mb-1.5">
+                Review Comments *
               </label>
               <textarea
                 required
                 rows={3}
                 maxLength={1000}
-                placeholder="Describe vehicle specification, condition assessment, or delivery handover..."
+                placeholder="Describe vehicle condition, acquisition service, or handover experience..."
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
-                className="w-full bg-white border border-neutral-300 rounded-xl p-4 text-xs sm:text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-950"
+                className="w-full bg-white border border-[#E8E8E8] rounded-lg p-3.5 text-xs sm:text-sm text-[#0A0A0A] placeholder:text-[#6B6B6B] focus:outline-none focus:border-[#0A0A0A]"
               />
             </div>
 
             <button
               type="submit"
               disabled={submitting}
-              className="py-3 px-6 rounded-xl bg-neutral-950 text-white font-bold text-xs uppercase tracking-wider hover:bg-neutral-800 disabled:opacity-50 transition-all cursor-pointer shadow-sm"
+              className="py-3 px-6 rounded-lg bg-[#0A0A0A] text-white text-xs font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
             >
-              {submitting ? "Submitting..." : "Submit Review for Verification"}
+              {submitting ? "Submitting..." : "Submit Review"}
             </button>
           </form>
         )}

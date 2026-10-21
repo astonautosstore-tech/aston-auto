@@ -6,7 +6,8 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
- * Format numbers as US Dollar currency ($)
+ * Format numbers as US Dollar currency ($) with thousands separators
+ * e.g. 45000 -> $45,000
  */
 export function formatUSD(amount: number | string | null | undefined): string {
   if (amount === null || amount === undefined || isNaN(Number(amount))) {
@@ -26,11 +27,6 @@ export function formatUSD(amount: number | string | null | undefined): string {
 export const formatPrice = formatUSD;
 
 /**
- * Backward compatibility alias for legacy components
- */
-export const formatNaira = formatUSD;
-
-/**
  * Format large numbers with abbreviated units (e.g. $150M, $1.2M, $750K)
  */
 export function formatCompactUSD(amount: number): string {
@@ -46,14 +42,52 @@ export function formatCompactUSD(amount: number): string {
   return formatUSD(amount);
 }
 
-export const formatCompactNaira = formatCompactUSD;
+/**
+ * Generic phone number digits extractor for WhatsApp links
+ * Strips spaces, dashes, parentheses, dots and leading +
+ */
+export function normalizePhoneDigits(phone: string): string {
+  if (!phone) return "";
+  return phone.replace(/[^0-9]/g, "");
+}
 
 /**
- * Calculate estimated monthly financing payment (US luxury auto terms)
+ * Build WhatsApp link from site settings or default US phone (+1 448 226 4666)
+ */
+export function getWhatsAppUrl(phone?: string | null, message?: string): string {
+  const defaultPhone = "14482264666";
+  const digits = phone ? normalizePhoneDigits(phone) : defaultPhone;
+  const target = digits || defaultPhone;
+  const baseUrl = `https://wa.me/${target}`;
+  if (message) {
+    return `${baseUrl}?text=${encodeURIComponent(message)}`;
+  }
+  return baseUrl;
+}
+
+/**
+ * Build tel link for click-to-call
+ */
+export function getTelUrl(phone?: string | null): string {
+  const target = phone ? phone.trim() : "+1 448 226 4666";
+  return `tel:${target.replace(/\s+/g, "")}`;
+}
+
+/**
+ * Validate phone number: 10 to 15 digits, optional leading +
+ */
+export function isValidPhone(phone: string): boolean {
+  if (!phone) return false;
+  const digits = normalizePhoneDigits(phone);
+  return digits.length >= 10 && digits.length <= 15;
+}
+
+/**
+ * Calculate estimated monthly financing payment (US prime luxury auto loan terms)
  * @param price Total vehicle price in USD
- * @param downPaymentPercent e.g. 20 (percent)
- * @param tenureMonths e.g. 36, 48, or 60 months
- * @param annualInterestRate e.g. 5.9 (percent standard US prime auto loan rate)
+ * @param downPaymentPercent default 20%
+ * @param tenureMonths default 60 months
+ * @param annualInterestRate default 5.9%
  */
 export function calculateFinancing(
   price: number,
@@ -95,3 +129,19 @@ export function generateOrderNumber(): string {
   const random = Math.floor(1000 + Math.random() * 9000);
   return `${prefix}-${dateStr}-${random}`;
 }
+
+/**
+ * Validate standard UUID format (v1-v5)
+ */
+export function isValidUUID(val?: string | null): boolean {
+  if (!val) return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+}
+
+/**
+ * Ensure a valid UUID string, generating one via crypto.randomUUID() if invalid
+ */
+export function ensureUUID(val?: string | null): string {
+  return isValidUUID(val) ? (val as string) : crypto.randomUUID();
+}
+

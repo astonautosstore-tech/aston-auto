@@ -3,8 +3,8 @@ export type CarCondition = 'Brand New' | 'Certified Pre-Owned' | 'Classic / Coll
 export type CommentStatus = 'pending' | 'approved' | 'hidden';
 
 export interface AdminUser {
-  id: string;
-  email: string;
+  /** UUID — same as auth.users.id */
+  user_id: string;
   created_at: string;
 }
 
@@ -55,7 +55,6 @@ export interface Comment {
 export interface Inquiry {
   id: string;
   car_id?: string;
-  car_title?: string;
   name: string;
   email: string;
   phone: string;
@@ -68,7 +67,6 @@ export interface Inquiry {
 export interface TestDriveRequest {
   id: string;
   car_id: string;
-  car_title?: string;
   name: string;
   email: string;
   phone: string;

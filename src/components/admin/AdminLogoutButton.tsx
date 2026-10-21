@@ -14,10 +14,10 @@ export default function AdminLogoutButton() {
     try {
       const supabase = createBrowserClient();
       await supabase.auth.signOut();
-      router.push("/admin/login");
+      router.push("/backdoor/login");
       router.refresh();
     } catch {
-      router.push("/admin/login");
+      router.push("/backdoor/login");
     } finally {
       setLoading(false);
     }

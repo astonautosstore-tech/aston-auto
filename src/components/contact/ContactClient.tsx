@@ -1,21 +1,21 @@
 "use client";
 
-import { useState } from "react";
-import Image from "next/image";
+import { useEffect, useState } from "react";
 import { z } from "zod";
-import { 
-  Phone, 
-  Mail, 
-  MapPin, 
-  Clock, 
-  CheckCircle2, 
-  ChevronDown, 
+import {
+  Phone,
+  Mail,
+  MapPin,
+  Clock,
+  CheckCircle2,
+  ChevronDown,
   MessageSquare,
-  AlertCircle
+  AlertCircle,
 } from "lucide-react";
 import Container from "@/components/ui/Container";
+import { SiteSettings } from "@/types/database";
 import { storeApi } from "@/lib/supabase/client";
-import { soundEngine } from "@/lib/sound";
+import { getWhatsAppUrl, getTelUrl } from "@/lib/utils";
 
 const contactSchema = z.object({
   name: z.string().trim().min(2, "Name must be at least 2 characters").max(100, "Name is too long"),
@@ -26,28 +26,29 @@ const contactSchema = z.object({
 
 const FAQS = [
   {
-    question: "How does vehicle purchase work at Aston?",
+    question: "How does vehicle acquisition work at Aston?",
     answer:
-      "Our process is transparent and personalized. You browse our verified collection, submit an inquiry or schedule a showroom viewing, inspect the car with our advisory team, agree on terms, and complete direct payment with white-glove enclosed delivery or showroom collection.",
+      "Our process is transparent and personalized. Browse our verified inventory, submit an inquiry or schedule a viewing, inspect the car with our advisory team, finalize terms, and complete direct payment with white-glove enclosed carrier delivery or showroom collection.",
   },
   {
     question: "Do you offer private showroom appointments?",
     answer:
-      "Yes. Our Beverly Hills gallery is open for private appointments Monday through Saturday from 9:00 AM to 7:00 PM PST. We ensure one-on-one attention with an executive advisor.",
+      "Yes. Private appointments are available Monday through Saturday. We ensure dedicated, one-on-one attention with a motoring advisor to walk you through any vehicle in detail.",
   },
   {
     question: "Are all vehicles certified with clean titles?",
     answer:
-      "Every vehicle undergoes a comprehensive 150-point mechanical, structural, and ECU diagnostic inspection. Full vehicle history reports, title documentation, and provenance dossiers are provided before acquisition.",
+      "Every vehicle undergoes a comprehensive 150-point mechanical, structural, and diagnostic inspection. Full vehicle history reports, clean title documentation, and provenance dossiers are provided prior to purchase.",
   },
   {
     question: "Is nationwide enclosed shipping available?",
     answer:
-      "Yes, we provide fully insured, climate-controlled enclosed carrier delivery directly to your driveway anywhere in the contiguous United States.",
+      "Yes, we provide fully insured, climate-controlled enclosed carrier delivery directly to your residence anywhere in the contiguous United States.",
   },
 ];
 
 export default function ContactClient() {
+  const [settings, setSettings] = useState<SiteSettings | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -58,6 +59,19 @@ export default function ContactClient() {
   const [submitted, setSubmitted] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
+
+  useEffect(() => {
+    storeApi.getSiteSettings().then((data) => {
+      if (data) setSettings(data);
+    });
+  }, []);
+
+  const phone = settings?.phone || "+1 448 226 4666";
+  const email = settings?.email || "concierge@astonautostores.com";
+  const whatsapp = settings?.whatsapp || phone;
+  const hours = settings?.showroom_hours || "Monday – Saturday: 9:00 AM – 7:00 PM EST";
+  // TODO: Confirm official US dealership address with client
+  const address = settings?.address?.trim() || "";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,11 +93,11 @@ export default function ContactClient() {
         preferred_contact: "whatsapp",
       });
 
-      soundEngine.playSuccessChime();
       setSubmitted(true);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Inquiry submission error:", err);
-      setErrorMessage(err?.message || "Failed to submit inquiry. Please try again.");
+      const msg = err instanceof Error ? err.message : "Failed to submit inquiry. Please try again.";
+      setErrorMessage(msg);
     } finally {
       setSubmitting(false);
     }
@@ -93,91 +107,153 @@ export default function ContactClient() {
     setActiveFaq(activeFaq === index ? null : index);
   };
 
-  const whatsappHref = `https://wa.me/14482264666?text=${encodeURIComponent(
-    `Hello, my name is ${formData.name}. Inquiry: ${formData.message}`
-  )}`;
-
   return (
-    <div className="min-h-screen bg-white text-neutral-900 pt-20 sm:pt-24">
-      {/* ─── 1. HERO TITLE SECTION ─── */}
-      <section className="relative w-full bg-[#F9FAFB] border-b border-neutral-200 py-12 sm:py-16">
+    <div className="min-h-screen bg-white text-[#0A0A0A] pt-24 pb-24">
+      {/* ─── 1. HERO HEADER ─── */}
+      <section className="border-b border-[#E8E8E8] pb-12 sm:pb-16">
         <Container>
-          <div className="max-w-3xl">
-            <span className="text-xs font-bold uppercase tracking-widest text-neutral-500 mb-2 block">
-              Dealership Concierge &amp; Showroom
+          <div className="max-w-2xl">
+            <span className="text-xs uppercase tracking-[0.14em] text-[#6B6B6B] block mb-3">
+              Concierge &amp; Showroom
             </span>
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-neutral-950 tracking-tight mb-3">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-medium tracking-tight text-[#0A0A0A] mb-4">
               Contact Our Advisors
             </h1>
-            <p className="text-sm sm:text-base text-neutral-600 leading-relaxed">
-              Whether you are acquiring a vehicle from our curated collection, inquiring about bespoke vehicle delivery, or scheduling a private viewing, our dedicated team is at your service.
+            <p className="text-sm sm:text-base text-[#6B6B6B] leading-relaxed">
+              Whether inquiring about a specific motorcar, scheduling a private viewing, or coordinating nationwide transport, our team is at your service.
             </p>
           </div>
         </Container>
       </section>
 
-      {/* ─── 2. CONTACT FORM & ADVISOR ─── */}
+      {/* ─── 2. CONTACT DETAILS + INQUIRY FORM ─── */}
       <section className="py-14 sm:py-20">
         <Container>
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-stretch">
-            {/* Left: Advisor / Concierge Photo */}
-            <div className="lg:col-span-5 relative rounded-2xl overflow-hidden min-h-[360px] lg:min-h-full border border-neutral-200 bg-neutral-100 shadow-sm">
-              <Image
-                src="https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=1400&q=90"
-                alt="Aston Client Advisor"
-                fill
-                sizes="(max-width: 1024px) 100vw, 40vw"
-                className="object-cover object-top"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-              <div className="absolute bottom-6 left-6 right-6 text-white">
-                <span className="text-xs uppercase font-bold tracking-widest text-neutral-300 block mb-1">
-                  Private Client Concierge
-                </span>
-                <h3 className="text-xl sm:text-2xl font-extrabold tracking-tight">
-                  Julian St. Clair
-                </h3>
-                <p className="text-xs text-neutral-300 mt-1 leading-relaxed">
-                  Senior Automotive Advisor &bull; Beverly Hills Showroom
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-start">
+            {/* Left: Contact Info */}
+            <div className="lg:col-span-5 space-y-8">
+              <div>
+                <h2 className="text-xl font-medium tracking-tight text-[#0A0A0A] mb-3">
+                  Direct Inquiries
+                </h2>
+                <p className="text-sm text-[#6B6B6B] leading-relaxed">
+                  Connect with a motoring advisor directly via phone, WhatsApp, or email for immediate assistance with any vehicle in our collection.
                 </p>
-                <div className="mt-4 flex items-center gap-2 text-xs font-mono text-neutral-200">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>Available for Consultations</span>
+              </div>
+
+              <div className="space-y-5 pt-2">
+                {/* Phone */}
+                <div className="flex items-start gap-4 p-4 rounded-lg bg-[#FAFAFA] border border-[#E8E8E8]">
+                  <div className="w-9 h-9 rounded-md bg-white border border-[#E8E8E8] flex items-center justify-center shrink-0 text-[#0A0A0A]">
+                    <Phone className="w-4 h-4" strokeWidth={1.5} />
+                  </div>
+                  <div>
+                    <span className="text-[11px] uppercase tracking-wider text-[#6B6B6B] block">Telephone</span>
+                    <a
+                      href={getTelUrl(phone)}
+                      className="text-sm font-medium text-[#0A0A0A] hover:underline"
+                    >
+                      {phone}
+                    </a>
+                  </div>
                 </div>
+
+                {/* WhatsApp */}
+                <div className="flex items-start gap-4 p-4 rounded-lg bg-[#FAFAFA] border border-[#E8E8E8]">
+                  <div className="w-9 h-9 rounded-md bg-white border border-[#E8E8E8] flex items-center justify-center shrink-0 text-[#0A0A0A]">
+                    <MessageSquare className="w-4 h-4" strokeWidth={1.5} />
+                  </div>
+                  <div>
+                    <span className="text-[11px] uppercase tracking-wider text-[#6B6B6B] block">WhatsApp Concierge</span>
+                    <a
+                      href={getWhatsAppUrl(whatsapp, "Hello Aston Auto Stores, I would like to inquire about a vehicle.")}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm font-medium text-[#0A0A0A] hover:underline"
+                    >
+                      {whatsapp}
+                    </a>
+                  </div>
+                </div>
+
+                {/* Email */}
+                <div className="flex items-start gap-4 p-4 rounded-lg bg-[#FAFAFA] border border-[#E8E8E8]">
+                  <div className="w-9 h-9 rounded-md bg-white border border-[#E8E8E8] flex items-center justify-center shrink-0 text-[#0A0A0A]">
+                    <Mail className="w-4 h-4" strokeWidth={1.5} />
+                  </div>
+                  <div>
+                    <span className="text-[11px] uppercase tracking-wider text-[#6B6B6B] block">Email</span>
+                    <a
+                      href={`mailto:${email}`}
+                      className="text-sm font-medium text-[#0A0A0A] hover:underline"
+                    >
+                      {email}
+                    </a>
+                  </div>
+                </div>
+
+                {/* Showroom Hours */}
+                <div className="flex items-start gap-4 p-4 rounded-lg bg-[#FAFAFA] border border-[#E8E8E8]">
+                  <div className="w-9 h-9 rounded-md bg-white border border-[#E8E8E8] flex items-center justify-center shrink-0 text-[#0A0A0A]">
+                    <Clock className="w-4 h-4" strokeWidth={1.5} />
+                  </div>
+                  <div>
+                    <span className="text-[11px] uppercase tracking-wider text-[#6B6B6B] block">Showroom Hours</span>
+                    <p className="text-sm text-[#0A0A0A] whitespace-pre-line">
+                      {hours}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Address (only rendered if present in site_settings) */}
+                {address && (
+                  <div className="flex items-start gap-4 p-4 rounded-lg bg-[#FAFAFA] border border-[#E8E8E8]">
+                    <div className="w-9 h-9 rounded-md bg-white border border-[#E8E8E8] flex items-center justify-center shrink-0 text-[#0A0A0A]">
+                      <MapPin className="w-4 h-4" strokeWidth={1.5} />
+                    </div>
+                    <div>
+                      <span className="text-[11px] uppercase tracking-wider text-[#6B6B6B] block">Location</span>
+                      <p className="text-sm text-[#0A0A0A] whitespace-pre-line font-mono">
+                        {address}
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Right: Modern Simple Form */}
-            <div className="lg:col-span-7 bg-[#F9FAFB] rounded-2xl p-6 sm:p-10 border border-neutral-200">
+            {/* Right: Modern Minimalist Form */}
+            <div className="lg:col-span-7 bg-[#FAFAFA] rounded-xl p-6 sm:p-10 border border-[#E8E8E8]">
               {submitted ? (
                 <div className="py-12 text-center space-y-4">
-                  <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
-                    <CheckCircle2 className="w-8 h-8" />
+                  <div className="w-12 h-12 rounded-full bg-white border border-[#E8E8E8] text-[#0A0A0A] flex items-center justify-center mx-auto">
+                    <CheckCircle2 className="w-6 h-6" strokeWidth={1.5} />
                   </div>
-                  <h3 className="text-2xl font-extrabold text-neutral-950">
+                  <h3 className="text-xl font-medium tracking-tight text-[#0A0A0A]">
                     Inquiry Received
                   </h3>
-                  <p className="text-sm text-neutral-600 max-w-md mx-auto leading-relaxed">
-                    Thank you, <span className="text-neutral-950 font-bold">{formData.name}</span>. A Senior Motoring Advisor will reach out via email or phone within 60 minutes.
+                  <p className="text-sm text-[#6B6B6B] max-w-md mx-auto leading-relaxed">
+                    Thank you, <span className="text-[#0A0A0A] font-medium">{formData.name}</span>. An automotive advisor will review your request and respond shortly.
                   </p>
-                  
-                  <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+
+                  <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3">
                     <a
-                      href={whatsappHref}
+                      href={getWhatsAppUrl(whatsapp, `Hello, my name is ${formData.name}. Inquiry: ${formData.message}`)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-emerald-600 text-white font-semibold text-xs uppercase tracking-wider hover:bg-emerald-700 transition-colors"
+                      className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-[#0A0A0A] text-white font-medium text-xs tracking-wide hover:opacity-90 transition-opacity"
                     >
-                      <MessageSquare className="w-4 h-4" />
+                      <MessageSquare className="w-3.5 h-3.5" strokeWidth={1.5} />
                       <span>Continue on WhatsApp</span>
                     </a>
 
                     <button
+                      type="button"
                       onClick={() => {
                         setSubmitted(false);
                         setFormData({ name: "", email: "", phone: "", message: "" });
                       }}
-                      className="w-full sm:w-auto px-6 py-3 rounded-lg bg-neutral-950 text-white font-semibold text-xs uppercase tracking-wider hover:bg-neutral-800 transition-colors"
+                      className="w-full sm:w-auto px-6 py-3 rounded-lg bg-white border border-[#E8E8E8] text-[#0A0A0A] font-medium text-xs tracking-wide hover:bg-[#F0F0F0] transition-colors cursor-pointer"
                     >
                       Send Another Message
                     </button>
@@ -185,12 +261,17 @@ export default function ContactClient() {
                 </div>
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-5">
-                  <h2 className="text-xl font-bold text-neutral-950">
-                    Send an Inquiry
-                  </h2>
+                  <div>
+                    <h3 className="text-lg font-medium text-[#0A0A0A] tracking-tight">
+                      Send an Inquiry
+                    </h3>
+                    <p className="text-xs text-[#6B6B6B] mt-1">
+                      Fill out the form below and an advisor will get back to you within 24 hours.
+                    </p>
+                  </div>
 
                   {errorMessage && (
-                    <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-xs flex items-center gap-2">
+                    <div className="p-3 bg-white border border-red-200 rounded-lg text-red-600 text-xs flex items-center gap-2">
                       <AlertCircle className="w-4 h-4 shrink-0" />
                       <span>{errorMessage}</span>
                     </div>
@@ -199,38 +280,38 @@ export default function ContactClient() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {/* Name */}
                     <div>
-                      <label className="block text-xs font-bold text-neutral-700 mb-1.5 uppercase tracking-wider">
+                      <label className="block text-xs font-medium text-[#0A0A0A] mb-1.5">
                         Full Name <span className="text-red-500">*</span>
                       </label>
                       <input
                         type="text"
                         required
-                        placeholder="e.g. Robert Vance"
+                        placeholder="John Doe"
                         value={formData.name}
                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        className="w-full bg-white border border-neutral-300 rounded-lg px-4 py-3 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-950 transition-colors"
+                        className="w-full bg-white border border-[#E8E8E8] rounded-lg px-3.5 py-2.5 text-sm text-[#0A0A0A] placeholder:text-[#6B6B6B]/60 focus:outline-none focus:border-[#0A0A0A] transition-colors"
                       />
                     </div>
 
                     {/* Email */}
                     <div>
-                      <label className="block text-xs font-bold text-neutral-700 mb-1.5 uppercase tracking-wider">
+                      <label className="block text-xs font-medium text-[#0A0A0A] mb-1.5">
                         Email Address <span className="text-red-500">*</span>
                       </label>
                       <input
                         type="email"
                         required
-                        placeholder="e.g. robert@domain.com"
+                        placeholder="john@example.com"
                         value={formData.email}
                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                        className="w-full bg-white border border-neutral-300 rounded-lg px-4 py-3 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-950 transition-colors"
+                        className="w-full bg-white border border-[#E8E8E8] rounded-lg px-3.5 py-2.5 text-sm text-[#0A0A0A] placeholder:text-[#6B6B6B]/60 focus:outline-none focus:border-[#0A0A0A] transition-colors"
                       />
                     </div>
                   </div>
 
                   {/* Phone */}
                   <div>
-                    <label className="block text-xs font-bold text-neutral-700 mb-1.5 uppercase tracking-wider">
+                    <label className="block text-xs font-medium text-[#0A0A0A] mb-1.5">
                       Phone Number <span className="text-red-500">*</span>
                     </label>
                     <input
@@ -239,22 +320,22 @@ export default function ContactClient() {
                       placeholder="+1 (555) 000-0000"
                       value={formData.phone}
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      className="w-full bg-white border border-neutral-300 rounded-lg px-4 py-3 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-950 transition-colors"
+                      className="w-full bg-white border border-[#E8E8E8] rounded-lg px-3.5 py-2.5 text-sm text-[#0A0A0A] placeholder:text-[#6B6B6B]/60 focus:outline-none focus:border-[#0A0A0A] transition-colors"
                     />
                   </div>
 
                   {/* Message */}
                   <div>
-                    <label className="block text-xs font-bold text-neutral-700 mb-1.5 uppercase tracking-wider">
-                      Vehicle or Inquiry Details <span className="text-red-500">*</span>
+                    <label className="block text-xs font-medium text-[#0A0A0A] mb-1.5">
+                      Message <span className="text-red-500">*</span>
                     </label>
                     <textarea
                       rows={4}
                       required
-                      placeholder="Specify the vehicle of interest, delivery location, or appointment preferences..."
+                      placeholder="Specify the vehicle of interest, appointment preferences, or delivery requirements..."
                       value={formData.message}
                       onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                      className="w-full bg-white border border-neutral-300 rounded-lg px-4 py-3 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-950 transition-colors resize-none"
+                      className="w-full bg-white border border-[#E8E8E8] rounded-lg px-3.5 py-2.5 text-sm text-[#0A0A0A] placeholder:text-[#6B6B6B]/60 focus:outline-none focus:border-[#0A0A0A] transition-colors resize-none"
                     />
                   </div>
 
@@ -263,9 +344,9 @@ export default function ContactClient() {
                     <button
                       type="submit"
                       disabled={submitting}
-                      className="w-full py-3.5 px-6 rounded-lg bg-neutral-950 hover:bg-neutral-800 disabled:opacity-50 text-white font-bold text-xs uppercase tracking-wider transition-colors shadow-sm cursor-pointer"
+                      className="w-full py-3 px-6 rounded-lg bg-[#0A0A0A] hover:opacity-90 disabled:opacity-50 text-white font-medium text-xs tracking-wide transition-opacity cursor-pointer"
                     >
-                      {submitting ? "Transmitting..." : "Send Showroom Inquiry"}
+                      {submitting ? "Sending..." : "Submit Inquiry"}
                     </button>
                   </div>
                 </form>
@@ -275,58 +356,15 @@ export default function ContactClient() {
         </Container>
       </section>
 
-      {/* ─── 3. SHOWROOM LOCATIONS & HOURS ─── */}
-      <section className="py-14 sm:py-16 bg-[#F9FAFB] border-y border-neutral-200">
-        <Container>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="p-6 bg-white rounded-xl border border-neutral-200 space-y-3">
-              <div className="w-10 h-10 rounded-lg bg-neutral-100 flex items-center justify-center text-neutral-900">
-                <MapPin className="w-5 h-5" />
-              </div>
-              <h3 className="font-bold text-base text-neutral-950">Showroom Address</h3>
-              <p className="text-xs text-neutral-600 leading-relaxed font-mono">
-                450 North Rodeo Drive<br />
-                Beverly Hills, CA 90210<br />
-                United States
-              </p>
-            </div>
-
-            <div className="p-6 bg-white rounded-xl border border-neutral-200 space-y-3">
-              <div className="w-10 h-10 rounded-lg bg-neutral-100 flex items-center justify-center text-neutral-900">
-                <Phone className="w-5 h-5" />
-              </div>
-              <h3 className="font-bold text-base text-neutral-950">Direct Contact</h3>
-              <p className="text-xs text-neutral-600 leading-relaxed font-mono">
-                Phone: <a href="tel:+14482264666" className="text-neutral-950 font-bold hover:underline">+1 448 226 4666</a><br />
-                Email: <a href="mailto:concierge@astonautostores.com" className="text-neutral-950 hover:underline">concierge@astonautostores.com</a><br />
-                WhatsApp: +1 448 226 4666
-              </p>
-            </div>
-
-            <div className="p-6 bg-white rounded-xl border border-neutral-200 space-y-3">
-              <div className="w-10 h-10 rounded-lg bg-neutral-100 flex items-center justify-center text-neutral-900">
-                <Clock className="w-5 h-5" />
-              </div>
-              <h3 className="font-bold text-base text-neutral-950">Concierge Hours</h3>
-              <p className="text-xs text-neutral-600 leading-relaxed font-mono">
-                Monday – Friday: 9:00 AM – 7:00 PM PST<br />
-                Saturday: 10:00 AM – 6:00 PM PST<br />
-                Sunday: Private Appointments Only
-              </p>
-            </div>
-          </div>
-        </Container>
-      </section>
-
-      {/* ─── 4. ACCORDION FAQS ─── */}
-      <section className="py-16 sm:py-20">
+      {/* ─── 3. FAQS ─── */}
+      <section className="py-16 sm:py-20 border-t border-[#E8E8E8]">
         <Container>
           <div className="max-w-2xl mx-auto">
             <div className="text-center mb-10">
-              <span className="text-xs font-bold uppercase tracking-widest text-neutral-500 block mb-1">
+              <span className="text-xs uppercase tracking-[0.14em] text-[#6B6B6B] block mb-2">
                 Frequently Asked
               </span>
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-neutral-950 tracking-tight">
+              <h2 className="text-2xl sm:text-3xl font-medium tracking-tight text-[#0A0A0A]">
                 Common Questions
               </h2>
             </div>
@@ -335,22 +373,24 @@ export default function ContactClient() {
               {FAQS.map((faq, i) => (
                 <div
                   key={i}
-                  className="rounded-xl border border-neutral-200 overflow-hidden bg-white transition-colors"
+                  className="rounded-lg border border-[#E8E8E8] bg-white overflow-hidden transition-colors"
                 >
                   <button
+                    type="button"
                     onClick={() => toggleFaq(i)}
-                    className="w-full flex items-center justify-between p-4 sm:p-5 text-left font-bold text-sm text-neutral-900 hover:bg-neutral-50 transition-colors cursor-pointer"
+                    className="w-full flex items-center justify-between p-4 sm:p-5 text-left font-medium text-sm text-[#0A0A0A] hover:bg-[#FAFAFA] transition-colors cursor-pointer"
                   >
                     <span>{faq.question}</span>
                     <ChevronDown
-                      className={`w-4 h-4 text-neutral-500 transition-transform duration-200 shrink-0 ml-4 ${
+                      className={`w-4 h-4 text-[#6B6B6B] transition-transform duration-200 shrink-0 ml-4 ${
                         activeFaq === i ? "rotate-180" : ""
                       }`}
+                      strokeWidth={1.5}
                     />
                   </button>
 
                   {activeFaq === i && (
-                    <div className="px-4 pb-5 sm:px-5 text-xs sm:text-sm text-neutral-600 leading-relaxed border-t border-neutral-100 pt-3">
+                    <div className="px-4 pb-5 sm:px-5 text-xs sm:text-sm text-[#6B6B6B] leading-relaxed border-t border-[#E8E8E8] pt-3">
                       {faq.answer}
                     </div>
                   )}

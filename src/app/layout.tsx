@@ -1,37 +1,49 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import SmoothScrollProvider from "@/components/providers/SmoothScrollProvider";
-import Navbar from "@/components/layout/Navbar";
-import Footer from "@/components/layout/Footer";
-import CookieConsent from "@/components/ui/CookieConsent";
+import StorefrontShell from "@/components/layout/StorefrontShell";
+
+const inter = Inter({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-inter",
+  weight: ["400", "500", "600"],
+});
+
+export const viewport: Viewport = {
+  themeColor: "#FFFFFF",
+  width: "device-width",
+  initialScale: 1,
+};
 
 export const metadata: Metadata = {
-  title: "Aston | Curators of Extraordinary Motoring",
+  metadataBase: new URL("https://astonautostores.com"),
+  title: {
+    default: "Aston Auto Stores | Curated Automotive Dealership",
+    template: "%s | Aston Auto Stores",
+  },
   description:
-    "Aston is North America's premier luxury and exotic automotive dealership. Curated inventory of Aston Martin, Rolls-Royce, Porsche, Ferrari, Bentley, and Lamborghini with bespoke white-glove nationwide delivery. Beverly Hills Showroom: +1 448 226 4666.",
-  keywords: [
-    "Aston",
-    "Aston Luxury Dealership",
-    "Beverly Hills Supercars",
-    "Exotic Cars USA",
-    "Aston Martin Rodeo Drive",
-    "Rolls-Royce Spectre",
-    "Porsche 911 GT3 RS",
-    "Ferrari 296 GTB",
-    "Luxury Car Dealership",
-  ],
-  authors: [{ name: "Aston Concierge" }],
+    "Curated selection of performance and luxury vehicles. Transparent pricing, nationwide delivery, and dedicated client service in the United States.",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "32x32" },
+      { url: "/icon.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
+  },
   openGraph: {
-    title: "Aston | Curators of Extraordinary Motoring",
-    description: "Explore our premier portfolio of curated supercars and bespoke grand tourers.",
+    title: "Aston Auto Stores | Curated Automotive Dealership",
+    description:
+      "Curated selection of performance and luxury vehicles. Transparent pricing, nationwide delivery, and dedicated client service.",
     url: "https://astonautostores.com",
-    siteName: "Aston",
+    siteName: "Aston Auto Stores",
     images: [
       {
-        url: "https://images.unsplash.com/photo-1617814076367-b759c7d7e738?auto=format&fit=crop&w=1200&q=80",
-        width: 1200,
-        height: 630,
-        alt: "Aston Martin DBS 770 Ultimate at Aston",
+        url: "/icon.png",
+        width: 512,
+        height: 512,
+        alt: "Aston Auto Stores Emblem",
       },
     ],
     locale: "en_US",
@@ -39,9 +51,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Aston | Curators of Extraordinary Motoring",
-    description: "The apex of luxury automotive. Explore our pristine collection.",
-    images: ["https://images.unsplash.com/photo-1617814076367-b759c7d7e738?auto=format&fit=crop&w=1200&q=80"],
+    title: "Aston Auto Stores",
+    description: "Curated selection of performance and luxury vehicles.",
   },
 };
 
@@ -51,16 +62,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" data-scroll-behavior="smooth" className="font-sans">
-      <body className="min-h-screen bg-white text-neutral-900 selection:bg-neutral-950 selection:text-white relative">
+    <html lang="en" className={`${inter.variable} font-sans`}>
+      <body className="min-h-screen bg-white text-[#0A0A0A] font-sans antialiased selection:bg-[#0A0A0A] selection:text-white">
         <SmoothScrollProvider>
-          <CookieConsent />
-
-          <div className="flex flex-col min-h-screen">
-            <Navbar />
-            <main className="flex-1">{children}</main>
-            <Footer />
-          </div>
+          <StorefrontShell>{children}</StorefrontShell>
         </SmoothScrollProvider>
       </body>
     </html>

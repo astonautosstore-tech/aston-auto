@@ -97,12 +97,12 @@ CREATE TABLE IF NOT EXISTS public.test_drives (
 -- SITE SETTINGS (Singleton Dealership Configuration)
 CREATE TABLE IF NOT EXISTS public.site_settings (
   id integer PRIMARY KEY DEFAULT 1 CHECK (id = 1),
-  company_name text NOT NULL DEFAULT 'Aston',
+  company_name text NOT NULL DEFAULT 'Aston Auto Stores',
   tagline text DEFAULT 'Curators of Extraordinary Motoring',
   phone text DEFAULT '+1 448 226 4666',
   whatsapp text DEFAULT '+1 448 226 4666',
   email text DEFAULT 'concierge@astonautostores.com',
-  address text DEFAULT '450 North Rodeo Drive, Beverly Hills, CA 90210',
+  address text DEFAULT '',
   showroom_hours text DEFAULT 'Monday – Saturday: 9:00 AM – 7:00 PM (By Appointment)',
   social_links jsonb DEFAULT '{"instagram": "https://instagram.com/astonautostores", "twitter": "https://twitter.com/astonautostores", "youtube": "https://youtube.com/@astonautostores", "linkedin": "https://linkedin.com/company/aston-auto-stores"}'::jsonb,
   hero_headline text DEFAULT 'The Apex of Automotive Artistry',

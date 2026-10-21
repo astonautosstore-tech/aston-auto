@@ -152,7 +152,7 @@ export const storeApi = {
     adminReply?: string
   ): Promise<void> {
     const client = getClient();
-    const updates: Record<string, any> = {
+    const updates: Record<string, unknown> = {
       status,
       updated_at: new Date().toISOString(),
     };
@@ -178,7 +178,6 @@ export const storeApi = {
   // ─── INQUIRIES ───
   async submitInquiry(inquiry: {
     car_id?: string;
-    car_title?: string;
     name: string;
     email: string;
     phone: string;
@@ -236,7 +235,6 @@ export const storeApi = {
   // ─── TEST DRIVES ───
   async submitTestDrive(testDrive: {
     car_id: string;
-    car_title?: string;
     name: string;
     email: string;
     phone: string;

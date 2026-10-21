@@ -18,23 +18,20 @@ import {
   Download,
   X,
   Save,
-  ShieldCheck,
   RefreshCw,
   Loader2,
   Upload,
-  ArrowUpDown,
   MoveLeft,
   MoveRight,
-  Phone,
-  Mail,
-  AlertCircle,
-  Eye,
-  Check,
+  LayoutDashboard,
+  Menu,
+  User,
+  ChevronRight,
 } from "lucide-react";
 import { Car, Comment, Inquiry, TestDrive, SiteSettings } from "@/types/database";
 import { createBrowserClient } from "@/lib/supabase/browser";
-import { formatUSD } from "@/lib/utils";
-import Container from "@/components/ui/Container";
+import { formatUSD, ensureUUID } from "@/lib/utils";
+import AdminLogoutButton from "@/components/admin/AdminLogoutButton";
 
 // Client-side image compression using canvas
 async function compressImageToWebP(file: File): Promise<Blob> {
@@ -140,7 +137,10 @@ export default function AdminDashboardClient() {
 
   // Notifications / feedback
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastType, setToastType] = useState<'success' | 'error'>('success');
   const [revalidating, setRevalidating] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   // Car Edit / Add Modal State
   const [isCarModalOpen, setIsCarModalOpen] = useState(false);
@@ -153,22 +153,34 @@ export default function AdminDashboardClient() {
   const [replyTextMap, setReplyTextMap] = useState<Record<string, string>>({});
 
   // Show Toast
-  const showToast = (msg: string) => {
+  const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
+    setToastType(type);
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3500);
+    setTimeout(() => setToastMessage(null), 5000);
+  };
+
+  const showError = (context: string, err: unknown) => {
+    const e = err as { message?: string; code?: string };
+    const msg = e?.message || String(err) || 'Unknown error';
+    const code = e?.code ? ` [${e.code}]` : '';
+    console.error(`[Admin] ${context}:`, err);
+    showToast(`${context}: ${msg}${code}`, 'error');
   };
 
   // ─── 1. FETCH ALL DATA FROM SUPABASE ───
-  const fetchAllData = async () => {
-    setLoading(true);
+  const fetchAllData = async (showLoadingState = false) => {
+    if (showLoadingState) {
+      setLoading(true);
+    }
     try {
       const supabase = createBrowserClient();
-      const [carsRes, inqRes, tdRes, comRes, setRes] = await Promise.all([
+      const [carsRes, inqRes, tdRes, comRes, setRes, userRes] = await Promise.all([
         supabase.from("cars").select("*").order("created_at", { ascending: false }),
         supabase.from("inquiries").select("*").order("created_at", { ascending: false }),
         supabase.from("test_drives").select("*").order("created_at", { ascending: false }),
         supabase.from("comments").select("*").order("created_at", { ascending: false }),
         supabase.from("site_settings").select("*").eq("id", 1).single(),
+        supabase.auth.getUser(),
       ]);
 
       if (carsRes.data) setCars(carsRes.data as Car[]);
@@ -176,6 +188,7 @@ export default function AdminDashboardClient() {
       if (tdRes.data) setTestDrives(tdRes.data as TestDrive[]);
       if (comRes.data) setComments(comRes.data as Comment[]);
       if (setRes.data) setSettings(setRes.data as SiteSettings);
+      if (userRes.data?.user?.email) setUserEmail(userRes.data.user.email);
     } catch (err) {
       console.error("Failed to load admin data:", err);
     } finally {
@@ -210,7 +223,7 @@ export default function AdminDashboardClient() {
 
   // ─── CAR OPERATIONS ───
   const handleOpenAddCar = () => {
-    const newId = `car-${Date.now()}`;
+    const newId = crypto.randomUUID();
     setEditingCar({
       id: newId,
       title: "",
@@ -248,34 +261,105 @@ export default function AdminDashboardClient() {
   const handleSaveCar = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingCar || !editingCar.title || !editingCar.slug) {
-      alert("Title and Slug are required.");
+      showToast('Title and Slug are required.', 'error');
+      return;
+    }
+
+    // Validate constraints
+    const year = editingCar.year ?? 2024;
+    if (year < 1900 || year > 2100) {
+      showToast('Year must be between 1900 and 2100.', 'error');
+      return;
+    }
+    const price = editingCar.price ?? 0;
+    if (price < 0) {
+      showToast('Price must be >= 0.', 'error');
+      return;
+    }
+    const discountPrice = editingCar.discount_price;
+    if (discountPrice !== null && discountPrice !== undefined && discountPrice >= price) {
+      showToast('Discount price must be less than the regular price.', 'error');
       return;
     }
 
     setCarSaving(true);
     try {
       const supabase = createBrowserClient();
-      const hero = editingCar.images && editingCar.images.length > 0
-        ? editingCar.images[0]
-        : editingCar.hero_image || "";
 
+      // Ensure car ID is a valid UUID
+      const carId = ensureUUID(editingCar.id);
+      if (editingCar.id !== carId) {
+        setEditingCar((prev) => (prev ? { ...prev, id: carId } : prev));
+      }
+
+      const hero =
+        editingCar.images && editingCar.images.length > 0
+          ? editingCar.images[0]
+          : editingCar.hero_image || '';
+
+      // Build explicit payload matching only real DB columns
       const carPayload = {
-        ...editingCar,
+        title: editingCar.title,
+        slug: editingCar.slug,
+        brand: editingCar.brand || '',
+        model: editingCar.model || '',
+        year: year,
+        price: price,
+        discount_price: discountPrice ?? null,
+        mileage: editingCar.mileage ?? 0,
+        transmission: editingCar.transmission || 'Automatic',
+        fuel_type: editingCar.fuel_type || 'Petrol',
+        body_type: editingCar.body_type || '',
+        color: editingCar.color || '',
+        interior_color: editingCar.interior_color || null,
+        condition: editingCar.condition || 'Certified Pre-Owned',
+        engine: editingCar.engine || '',
+        acceleration_0_100: editingCar.acceleration_0_100 ?? null,
+        top_speed_kmh: editingCar.top_speed_kmh ?? null,
+        horsepower: editingCar.horsepower ?? null,
+        torque_nm: editingCar.torque_nm ?? null,
+        description: editingCar.description || '',
+        features: editingCar.features || [],
+        status: editingCar.status || 'available',
+        stock_quantity: editingCar.stock_quantity ?? 1,
+        is_featured: editingCar.is_featured ?? false,
         hero_image: hero,
-        images: editingCar.images || [hero],
+        images: editingCar.images && editingCar.images.length > 0 ? editingCar.images : [hero],
         updated_at: new Date().toISOString(),
       };
 
-      const { error } = await supabase.from("cars").upsert(carPayload);
-      if (error) throw error;
+      const isNew = !cars.some((c) => c.id === carId);
+
+      let error;
+      if (isNew) {
+        // INSERT — include valid UUID id so storage folder matches
+        const { error: insertErr } = await supabase
+          .from('cars')
+          .insert({ id: carId, ...carPayload });
+        error = insertErr;
+      } else {
+        // UPDATE existing row
+        const { error: updateErr } = await supabase
+          .from('cars')
+          .update(carPayload)
+          .eq('id', carId);
+        error = updateErr;
+      }
+
+      if (error) {
+        console.error('[Admin] Save car error:', error);
+        const code = error.code ? ` [${error.code}]` : '';
+        showToast(`Save failed: ${error.message}${code}`, 'error');
+        return;
+      }
 
       showToast(`Vehicle "${editingCar.title}" saved successfully.`);
       setIsCarModalOpen(false);
       await fetchAllData();
       await triggerRevalidation(`/cars/${editingCar.slug}`);
+      await triggerRevalidation();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Error saving vehicle.";
-      alert(msg);
+      showError('Save car', err);
     } finally {
       setCarSaving(false);
     }
@@ -286,26 +370,30 @@ export default function AdminDashboardClient() {
 
     try {
       const supabase = createBrowserClient();
-      const { error } = await supabase.from("cars").delete().eq("id", id);
-      if (error) throw error;
-
+      const { error } = await supabase.from('cars').delete().eq('id', id);
+      if (error) {
+        showError('Delete car', error);
+        return;
+      }
       showToast(`Deleted ${title}.`);
       setCars(cars.filter((c) => c.id !== id));
       await triggerRevalidation();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to delete vehicle.";
-      alert(msg);
+      showError('Delete car', err);
     }
   };
 
   // Multi-file Image Upload with Client-Side Canvas Compression
   const handleImageFilesSelected = async (files: FileList | null) => {
-    if (!files || files.length === 0 || !editingCar?.id) return;
+    if (!files || files.length === 0 || !editingCar) return;
 
     setUploadingImages(true);
     try {
       const supabase = createBrowserClient();
-      const carId = editingCar.id;
+      const carId = ensureUUID(editingCar.id);
+      if (editingCar.id !== carId) {
+        setEditingCar((prev) => (prev ? { ...prev, id: carId } : prev));
+      }
       const uploadedUrls: string[] = [];
 
       for (let i = 0; i < files.length; i++) {
@@ -324,7 +412,9 @@ export default function AdminDashboardClient() {
           });
 
         if (uploadErr) {
-          console.error("Storage upload error:", uploadErr);
+          console.error('[Admin] Storage upload error:', uploadErr);
+          const code = uploadErr.statusCode ? ` [${uploadErr.statusCode}]` : '';
+          showToast(`Upload failed for "${file.name}": ${uploadErr.message}${code}`, 'error');
           continue;
         }
 
@@ -342,10 +432,11 @@ export default function AdminDashboardClient() {
         hero_image: updatedImages[0] || editingCar.hero_image,
       });
 
-      showToast(`Uploaded ${uploadedUrls.length} image(s) to Aston storage.`);
+      if (uploadedUrls.length > 0) {
+        showToast(`Uploaded ${uploadedUrls.length} image(s) successfully.`);
+      }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Image upload failed.";
-      alert(msg);
+      showError('Image upload', err);
     } finally {
       setUploadingImages(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -407,87 +498,78 @@ export default function AdminDashboardClient() {
   // ─── INQUIRIES OPERATIONS ───
   const handleUpdateInquiryStatus = async (
     id: string,
-    status: "new" | "contacted" | "resolved"
+    status: 'new' | 'contacted' | 'resolved'
   ) => {
     try {
       const supabase = createBrowserClient();
-      const { error } = await supabase.from("inquiries").update({ status }).eq("id", id);
-      if (error) throw error;
-
-      setInquiries(
-        inquiries.map((inq) => (inq.id === id ? { ...inq, status } : inq))
-      );
+      const { error } = await supabase.from('inquiries').update({ status }).eq('id', id);
+      if (error) { showError('Update inquiry status', error); return; }
+      setInquiries(inquiries.map((inq) => (inq.id === id ? { ...inq, status } : inq)));
       showToast(`Inquiry status updated to ${status}.`);
-    } catch {
-      alert("Failed to update inquiry status.");
+    } catch (err) {
+      showError('Update inquiry status', err);
     }
   };
 
   const handleDeleteInquiry = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this inquiry?")) return;
+    if (!confirm('Are you sure you want to delete this inquiry?')) return;
     try {
       const supabase = createBrowserClient();
-      const { error } = await supabase.from("inquiries").delete().eq("id", id);
-      if (error) throw error;
+      const { error } = await supabase.from('inquiries').delete().eq('id', id);
+      if (error) { showError('Delete inquiry', error); return; }
       setInquiries(inquiries.filter((i) => i.id !== id));
-      showToast("Inquiry deleted.");
-    } catch {
-      alert("Failed to delete inquiry.");
+      showToast('Inquiry deleted.');
+    } catch (err) {
+      showError('Delete inquiry', err);
     }
   };
 
   // ─── TEST DRIVES OPERATIONS ───
   const handleUpdateTestDriveStatus = async (
     id: string,
-    status: "pending" | "confirmed" | "completed" | "cancelled"
+    status: 'pending' | 'confirmed' | 'completed' | 'cancelled'
   ) => {
     try {
       const supabase = createBrowserClient();
-      const { error } = await supabase.from("test_drives").update({ status }).eq("id", id);
-      if (error) throw error;
-
-      setTestDrives(
-        testDrives.map((td) => (td.id === id ? { ...td, status } : td))
-      );
+      const { error } = await supabase.from('test_drives').update({ status }).eq('id', id);
+      if (error) { showError('Update test drive status', error); return; }
+      setTestDrives(testDrives.map((td) => (td.id === id ? { ...td, status } : td)));
       showToast(`Test drive status updated to ${status}.`);
-    } catch {
-      alert("Failed to update appointment status.");
+    } catch (err) {
+      showError('Update test drive status', err);
     }
   };
 
   const handleDeleteTestDrive = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this test drive record?")) return;
+    if (!confirm('Are you sure you want to delete this test drive record?')) return;
     try {
       const supabase = createBrowserClient();
-      const { error } = await supabase.from("test_drives").delete().eq("id", id);
-      if (error) throw error;
+      const { error } = await supabase.from('test_drives').delete().eq('id', id);
+      if (error) { showError('Delete test drive', error); return; }
       setTestDrives(testDrives.filter((td) => td.id !== id));
-      showToast("Test drive record deleted.");
-    } catch {
-      alert("Failed to delete test drive.");
+      showToast('Test drive record deleted.');
+    } catch (err) {
+      showError('Delete test drive', err);
     }
   };
 
   // ─── COMMENTS / REVIEWS OPERATIONS ───
   const handleUpdateCommentStatus = async (
     id: string,
-    status: "approved" | "pending" | "hidden"
+    status: 'approved' | 'pending' | 'hidden'
   ) => {
     try {
       const supabase = createBrowserClient();
       const { error } = await supabase
-        .from("comments")
+        .from('comments')
         .update({ status, updated_at: new Date().toISOString() })
-        .eq("id", id);
-      if (error) throw error;
-
-      setComments(
-        comments.map((c) => (c.id === id ? { ...c, status } : c))
-      );
+        .eq('id', id);
+      if (error) { showError('Update review status', error); return; }
+      setComments(comments.map((c) => (c.id === id ? { ...c, status } : c)));
       showToast(`Review marked as ${status}.`);
       await triggerRevalidation();
-    } catch {
-      alert("Failed to update review status.");
+    } catch (err) {
+      showError('Update review status', err);
     }
   };
 
@@ -498,32 +580,29 @@ export default function AdminDashboardClient() {
     try {
       const supabase = createBrowserClient();
       const { error } = await supabase
-        .from("comments")
+        .from('comments')
         .update({ admin_reply: reply.trim(), updated_at: new Date().toISOString() })
-        .eq("id", id);
-      if (error) throw error;
-
-      setComments(
-        comments.map((c) => (c.id === id ? { ...c, admin_reply: reply.trim() } : c))
-      );
-      showToast("Executive response published.");
+        .eq('id', id);
+      if (error) { showError('Save reply', error); return; }
+      setComments(comments.map((c) => (c.id === id ? { ...c, admin_reply: reply.trim() } : c)));
+      showToast('Executive response published.');
       await triggerRevalidation();
-    } catch {
-      alert("Failed to save reply.");
+    } catch (err) {
+      showError('Save reply', err);
     }
   };
 
   const handleDeleteComment = async (id: string) => {
-    if (!confirm("Are you sure you want to permanently remove this review?")) return;
+    if (!confirm('Are you sure you want to permanently remove this review?')) return;
     try {
       const supabase = createBrowserClient();
-      const { error } = await supabase.from("comments").delete().eq("id", id);
-      if (error) throw error;
+      const { error } = await supabase.from('comments').delete().eq('id', id);
+      if (error) { showError('Delete review', error); return; }
       setComments(comments.filter((c) => c.id !== id));
-      showToast("Review deleted.");
+      showToast('Review deleted.');
       await triggerRevalidation();
-    } catch {
-      alert("Failed to delete review.");
+    } catch (err) {
+      showError('Delete review', err);
     }
   };
 
@@ -534,16 +613,32 @@ export default function AdminDashboardClient() {
 
     try {
       const supabase = createBrowserClient();
+      // Build explicit payload matching only the site_settings columns
+      const payload = {
+        company_name: settings.company_name,
+        tagline: settings.tagline ?? null,
+        phone: settings.phone ?? null,
+        whatsapp: settings.whatsapp ?? null,
+        email: settings.email ?? null,
+        address: settings.address ?? null,
+        showroom_hours: settings.showroom_hours ?? null,
+        social_links: settings.social_links ?? null,
+        hero_headline: settings.hero_headline ?? null,
+        hero_subheadline: settings.hero_subheadline ?? null,
+        updated_at: new Date().toISOString(),
+      };
       const { error } = await supabase
-        .from("site_settings")
-        .upsert({ ...settings, id: 1, updated_at: new Date().toISOString() });
-      if (error) throw error;
-
-      showToast("Site settings saved & synced.");
+        .from('site_settings')
+        .update(payload)
+        .eq('id', 1);
+      if (error) {
+        showError('Save settings', error);
+        return;
+      }
+      showToast('Site settings saved & synced.');
       await triggerRevalidation();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to save settings.";
-      alert(msg);
+      showError('Save settings', err);
     }
   };
 
@@ -555,21 +650,31 @@ export default function AdminDashboardClient() {
       c.model.toLowerCase().includes(carSearch.toLowerCase())
   );
 
-  const filteredInquiries = inquiries.filter(
-    (i) =>
+  const getCarTitle = (carId?: string | null) => {
+    if (!carId) return null;
+    const car = cars.find((c) => c.id === carId);
+    return car ? `${car.year} ${car.brand} ${car.model}` : null;
+  };
+
+  const filteredInquiries = inquiries.filter((i) => {
+    const carTitle = getCarTitle(i.car_id);
+    return (
       i.name.toLowerCase().includes(inquirySearch.toLowerCase()) ||
       i.email.toLowerCase().includes(inquirySearch.toLowerCase()) ||
       i.phone.toLowerCase().includes(inquirySearch.toLowerCase()) ||
-      (i.car_title && i.car_title.toLowerCase().includes(inquirySearch.toLowerCase()))
-  );
+      (carTitle ? carTitle.toLowerCase().includes(inquirySearch.toLowerCase()) : false)
+    );
+  });
 
-  const filteredTestDrives = testDrives.filter(
-    (td) =>
+  const filteredTestDrives = testDrives.filter((td) => {
+    const carTitle = getCarTitle(td.car_id);
+    return (
       td.name.toLowerCase().includes(testDriveSearch.toLowerCase()) ||
       td.email.toLowerCase().includes(testDriveSearch.toLowerCase()) ||
       td.phone.toLowerCase().includes(testDriveSearch.toLowerCase()) ||
-      (td.car_title && td.car_title.toLowerCase().includes(testDriveSearch.toLowerCase()))
-  );
+      (carTitle ? carTitle.toLowerCase().includes(testDriveSearch.toLowerCase()) : false)
+    );
+  });
 
   const filteredComments = comments.filter((c) =>
     reviewFilter === "all" ? true : c.status === reviewFilter
@@ -582,67 +687,216 @@ export default function AdminDashboardClient() {
   const pendingTestDrivesCount = testDrives.filter((td) => td.status === "pending").length;
   const pendingReviewsCount = comments.filter((c) => c.status === "pending").length;
 
-  return (
-    <div className="pt-6">
-      <Container>
-        {/* Toast Alert */}
-        {toastMessage && (
-          <div className="fixed bottom-6 right-6 z-50 p-4 rounded-xl bg-neutral-900 text-white text-xs font-semibold shadow-2xl flex items-center gap-3 animate-fade-in border border-neutral-700">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-            <span>{toastMessage}</span>
-          </div>
-        )}
+  const navTabs = [
+    { id: "overview" as const, label: "Overview", icon: LayoutDashboard, count: null, highlight: false },
+    { id: "cars" as const, label: "Vehicles", icon: CarIcon, count: cars.length, highlight: false },
+    {
+      id: "inquiries" as const,
+      label: "Inquiries",
+      icon: MessageSquare,
+      count: newInquiriesCount > 0 ? newInquiriesCount : null,
+      highlight: newInquiriesCount > 0,
+    },
+    {
+      id: "test_drives" as const,
+      label: "Test Drives",
+      icon: Calendar,
+      count: pendingTestDrivesCount > 0 ? pendingTestDrivesCount : null,
+      highlight: pendingTestDrivesCount > 0,
+    },
+    {
+      id: "reviews" as const,
+      label: "Reviews",
+      icon: Star,
+      count: pendingReviewsCount > 0 ? pendingReviewsCount : null,
+      highlight: pendingReviewsCount > 0,
+    },
+    { id: "settings" as const, label: "Settings", icon: Settings, count: null, highlight: false },
+  ];
 
-        {/* ─── TAB NAVIGATION & QUICK ACTIONS ─── */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-neutral-200">
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
-            {[
-              { id: "overview", label: "Overview", icon: ShieldCheck },
-              { id: "cars", label: `Cars (${cars.length})`, icon: CarIcon },
-              {
-                id: "inquiries",
-                label: `Inquiries ${newInquiriesCount > 0 ? `(${newInquiriesCount})` : ""}`,
-                icon: MessageSquare,
-              },
-              {
-                id: "test_drives",
-                label: `Test Drives ${
-                  pendingTestDrivesCount > 0 ? `(${pendingTestDrivesCount})` : ""
-                }`,
-                icon: Calendar,
-              },
-              {
-                id: "reviews",
-                label: `Reviews ${pendingReviewsCount > 0 ? `(${pendingReviewsCount})` : ""}`,
-                icon: Star,
-              },
-              { id: "settings", label: "Settings", icon: Settings },
-            ].map((tab) => {
+  const tabMeta: Record<string, { title: string; subtitle: string }> = {
+    overview: { title: "Executive Overview", subtitle: "Key performance metrics, showroom status, and recent activity" },
+    cars: { title: "Vehicle Inventory", subtitle: "Manage showroom catalog, pricing, specs, and gallery photography" },
+    inquiries: { title: "Customer Inquiries", subtitle: "Lead generation, prospective buyer questions, and direct messages" },
+    test_drives: { title: "Test Drive Bookings", subtitle: "VIP appointment scheduling, client slots, and status management" },
+    reviews: { title: "Showroom Reviews", subtitle: "Moderate client testimonials and publish verified feedback" },
+    settings: { title: "Dealership Settings", subtitle: "Update showroom hours, contact coordinates, and homepage branding" },
+  };
+
+  return (
+    <div className="min-h-screen bg-[#F9FAFB] flex flex-col md:flex-row text-neutral-900 font-sans">
+      {/* Toast Alert */}
+      {toastMessage && (
+        <div
+          className={`fixed bottom-6 right-6 z-50 p-4 rounded-xl text-white text-xs font-semibold shadow-2xl flex items-center gap-3 animate-fade-in border max-w-sm ${
+            toastType === 'error'
+              ? 'bg-red-700 border-red-600'
+              : 'bg-neutral-900 border-neutral-700'
+          }`}
+        >
+          <CheckCircle2 className={`w-4 h-4 shrink-0 ${toastType === 'error' ? 'text-red-300' : 'text-emerald-400'}`} />
+          <span className="break-words">{toastMessage}</span>
+        </div>
+      )}
+
+      {/* Mobile Top Header (only on screens < md) */}
+      <div className="md:hidden flex items-center justify-between px-4 py-3 bg-white border-b border-neutral-200 sticky top-0 z-30">
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={() => setMobileNavOpen(!mobileNavOpen)}
+            className="p-2 rounded-lg text-neutral-700 hover:bg-neutral-100 transition-colors cursor-pointer"
+            aria-label="Toggle navigation"
+          >
+            {mobileNavOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
+          <span className="font-extrabold tracking-tight text-lg text-neutral-950 font-display">
+            ASTON
+          </span>
+          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-neutral-900 text-white">
+            Console
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleOpenAddCar}
+            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-neutral-950 text-white text-xs font-bold hover:bg-neutral-800 transition-colors shadow-sm cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Add Car</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Backdrop for mobile drawer */}
+      {mobileNavOpen && (
+        <div
+          className="fixed inset-0 bg-black/40 z-40 md:hidden"
+          onClick={() => setMobileNavOpen(false)}
+        />
+      )}
+
+      {/* ─── DESKTOP & MOBILE SIDENAV ─── */}
+      <aside
+        className={`fixed md:sticky top-0 left-0 h-screen z-50 md:z-20 w-64 bg-white border-r border-neutral-200 flex flex-col justify-between transition-transform duration-300 ease-in-out shrink-0 ${
+          mobileNavOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+        }`}
+      >
+        {/* Brand & Dealership Info */}
+        <div>
+          <div className="p-6 border-b border-neutral-100 flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-extrabold tracking-tight text-xl text-neutral-950 font-display">
+                  ASTON
+                </span>
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-neutral-900 text-white">
+                  Console
+                </span>
+              </div>
+              <p className="text-[11px] text-neutral-500 font-medium mt-1">
+                Dealership Management
+              </p>
+            </div>
+            <button
+              onClick={() => setMobileNavOpen(false)}
+              className="md:hidden p-1.5 rounded-lg text-neutral-400 hover:text-black hover:bg-neutral-100"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Navigation Links */}
+          <nav className="p-3 space-y-1">
+            {navTabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
               return (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id as typeof activeTab)}
-                  className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
+                  onClick={() => {
+                    setActiveTab(tab.id);
+                    setMobileNavOpen(false);
+                  }}
+                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                     isActive
-                      ? "bg-neutral-950 text-white shadow-sm"
-                      : "bg-white text-neutral-600 hover:text-neutral-950 border border-neutral-200 hover:border-neutral-300"
+                      ? "bg-neutral-950 text-white shadow-sm font-bold"
+                      : "text-neutral-600 hover:text-neutral-950 hover:bg-neutral-100"
                   }`}
                 >
-                  <Icon className="w-3.5 h-3.5" />
-                  <span>{tab.label}</span>
+                  <div className="flex items-center gap-3">
+                    <Icon className={`w-4 h-4 ${isActive ? "text-white" : "text-neutral-500"}`} />
+                    <span>{tab.label}</span>
+                  </div>
+                  {tab.count !== null && (
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        tab.highlight
+                          ? isActive
+                            ? "bg-emerald-500 text-white"
+                            : "bg-emerald-100 text-emerald-800"
+                          : isActive
+                          ? "bg-neutral-800 text-neutral-300"
+                          : "bg-neutral-100 text-neutral-600"
+                      }`}
+                    >
+                      {tab.count}
+                    </span>
+                  )}
                 </button>
               );
             })}
+          </nav>
+        </div>
+
+        {/* Sidenav Bottom / User & Tools */}
+        <div className="p-4 border-t border-neutral-100 space-y-3 bg-neutral-50/50">
+          {/* Live Showroom Link */}
+          <Link
+            href="/"
+            target="_blank"
+            className="flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium text-neutral-600 hover:text-neutral-950 hover:bg-neutral-100 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <ExternalLink className="w-3.5 h-3.5 text-neutral-400" />
+              <span>Live Showroom</span>
+            </div>
+            <ChevronRight className="w-3 h-3 text-neutral-400" />
+          </Link>
+
+          {/* User Email & Logout */}
+          <div className="pt-2 border-t border-neutral-200/60 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="w-7 h-7 rounded-full bg-neutral-200 flex items-center justify-center shrink-0">
+                <User className="w-3.5 h-3.5 text-neutral-600" />
+              </div>
+              <span className="text-xs text-neutral-700 font-medium truncate max-w-[110px]" title={userEmail || "Admin"}>
+                {userEmail || "Administrator"}
+              </span>
+            </div>
+            <AdminLogoutButton />
+          </div>
+        </div>
+      </aside>
+
+      {/* ─── MAIN CONTENT AREA ─── */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Sticky Topbar */}
+        <header className="sticky top-0 z-10 bg-white/95 backdrop-blur border-b border-neutral-200 px-6 lg:px-8 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h1 className="text-base sm:text-lg font-bold text-neutral-950">
+              {tabMeta[activeTab]?.title || "Dashboard"}
+            </h1>
+            <p className="text-xs text-neutral-500">
+              {tabMeta[activeTab]?.subtitle || "Aston Auto Management"}
+            </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 self-end sm:self-auto">
             <button
               onClick={() => triggerRevalidation()}
               disabled={revalidating}
-              className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-neutral-200 text-xs font-semibold text-neutral-700 hover:text-neutral-950 hover:bg-neutral-50 shadow-sm disabled:opacity-50"
-              title="Purge and revalidate Next.js cache for showroom pages"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-neutral-200 text-xs font-semibold text-neutral-700 hover:text-neutral-950 hover:bg-neutral-50 shadow-sm disabled:opacity-50 transition-colors cursor-pointer"
+              title="Purge Next.js cache for storefront"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${revalidating ? "animate-spin" : ""}`} />
               <span>{revalidating ? "Revalidating..." : "Clear Cache"}</span>
@@ -650,21 +904,23 @@ export default function AdminDashboardClient() {
 
             <button
               onClick={handleOpenAddCar}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-neutral-950 text-white text-xs font-bold uppercase tracking-wider hover:bg-neutral-800 shadow-sm"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-neutral-950 text-white text-xs font-bold uppercase tracking-wider hover:bg-neutral-800 shadow-sm transition-all cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Add Vehicle</span>
             </button>
           </div>
-        </div>
+        </header>
 
-        {/* Loading Spinner */}
-        {loading && (
-          <div className="py-24 text-center">
-            <Loader2 className="w-8 h-8 animate-spin mx-auto text-neutral-400 mb-3" />
-            <p className="text-xs text-neutral-500">Synchronizing Aston database...</p>
-          </div>
-        )}
+        {/* Content Body */}
+        <main className="flex-1 p-6 lg:p-8 max-w-7xl w-full">
+          {/* Loading Spinner */}
+          {loading && (
+            <div className="py-24 text-center">
+              <Loader2 className="w-8 h-8 animate-spin mx-auto text-neutral-400 mb-3" />
+              <p className="text-xs text-neutral-500">Synchronizing Aston database...</p>
+            </div>
+          )}
 
         {/* ─── TAB 1: OVERVIEW ─── */}
         {!loading && activeTab === "overview" && (
@@ -743,10 +999,11 @@ export default function AdminDashboardClient() {
               ) : (
                 <div className="divide-y divide-neutral-100">
                   {inquiries.slice(0, 5).map((inq) => {
+                    const carTitle = getCarTitle(inq.car_id);
                     const cleanPhone = inq.phone.replace(/[^0-9]/g, "");
                     const waText = encodeURIComponent(
                       `Hello ${inq.name}, thank you for contacting Aston regarding the ${
-                        inq.car_title || "vehicle"
+                        carTitle || "vehicle"
                       }. How may our private client concierge assist you today?`
                     );
 
@@ -769,8 +1026,8 @@ export default function AdminDashboardClient() {
                             >
                               {inq.status}
                             </span>
-                            {inq.car_title && (
-                              <span className="text-xs text-neutral-500">• {inq.car_title}</span>
+                            {carTitle && (
+                              <span className="text-xs text-neutral-500">• {carTitle}</span>
                             )}
                           </div>
                           <p className="text-xs text-neutral-600 line-clamp-1">{inq.message}</p>
@@ -841,10 +1098,11 @@ export default function AdminDashboardClient() {
               ) : (
                 <div className="divide-y divide-neutral-100">
                   {testDrives.slice(0, 5).map((td) => {
+                    const carTitle = getCarTitle(td.car_id);
                     const cleanPhone = td.phone.replace(/[^0-9]/g, "");
                     const waText = encodeURIComponent(
                       `Hello ${td.name}, confirming your Aston test drive appointment for the ${
-                        td.car_title || "vehicle"
+                        carTitle || "vehicle"
                       } on ${td.preferred_date} (${td.preferred_time}).`
                     );
 
@@ -869,8 +1127,8 @@ export default function AdminDashboardClient() {
                             >
                               {td.status}
                             </span>
-                            {td.car_title && (
-                              <span className="text-xs text-neutral-500">• {td.car_title}</span>
+                            {carTitle && (
+                              <span className="text-xs text-neutral-500">• {carTitle}</span>
                             )}
                           </div>
                           <div className="text-xs font-semibold text-neutral-700 flex items-center gap-2">
@@ -963,6 +1221,7 @@ export default function AdminDashboardClient() {
                                 src={car.hero_image}
                                 alt={car.title}
                                 fill
+                                sizes="64px"
                                 className="object-cover"
                               />
                             </div>
@@ -1094,10 +1353,11 @@ export default function AdminDashboardClient() {
                   </thead>
                   <tbody className="divide-y divide-neutral-100">
                     {filteredInquiries.map((inq) => {
+                      const carTitle = getCarTitle(inq.car_id);
                       const cleanPhone = inq.phone.replace(/[^0-9]/g, "");
                       const waText = encodeURIComponent(
                         `Hello ${inq.name}, thank you for reaching out to Aston regarding the ${
-                          inq.car_title || "vehicle"
+                          carTitle || "vehicle"
                         }.`
                       );
 
@@ -1110,7 +1370,7 @@ export default function AdminDashboardClient() {
                           </td>
 
                           <td className="py-3 px-4 font-semibold text-neutral-900">
-                            {inq.car_title || "General Showroom"}
+                            {carTitle || "General Showroom"}
                           </td>
 
                           <td className="py-3 px-4 text-neutral-600 max-w-xs">
@@ -1213,10 +1473,11 @@ export default function AdminDashboardClient() {
                   </thead>
                   <tbody className="divide-y divide-neutral-100">
                     {filteredTestDrives.map((td) => {
+                      const carTitle = getCarTitle(td.car_id);
                       const cleanPhone = td.phone.replace(/[^0-9]/g, "");
                       const waText = encodeURIComponent(
-                        `Hello ${td.name}, this is Aston Beverly Hills regarding your scheduled test drive of the ${
-                          td.car_title || "vehicle"
+                        `Hello ${td.name}, this is Aston Auto Stores regarding your scheduled test drive of the ${
+                          carTitle || "vehicle"
                         } on ${td.preferred_date}.`
                       );
 
@@ -1229,7 +1490,7 @@ export default function AdminDashboardClient() {
                           </td>
 
                           <td className="py-3 px-4 font-semibold text-neutral-900">
-                            {td.car_title || "Showroom Fleet"}
+                            {carTitle || "Showroom Fleet"}
                           </td>
 
                           <td className="py-3 px-4">
@@ -1902,7 +2163,13 @@ export default function AdminDashboardClient() {
                             isHero ? "border-emerald-600 ring-2 ring-emerald-600/20" : "border-neutral-200"
                           }`}
                         >
-                          <Image src={imgUrl} alt={`Car photo ${idx + 1}`} fill className="object-cover" />
+                          <Image
+                            src={imgUrl}
+                            alt={`Car photo ${idx + 1}`}
+                            fill
+                            sizes="(max-width: 768px) 50vw, 160px"
+                            className="object-cover"
+                          />
 
                           {isHero && (
                             <span className="absolute top-1.5 left-1.5 px-2 py-0.5 rounded text-[9px] font-bold uppercase bg-emerald-600 text-white">
@@ -2003,7 +2270,8 @@ export default function AdminDashboardClient() {
             </div>
           </div>
         )}
-      </Container>
+        </main>
+      </div>
     </div>
   );
 }

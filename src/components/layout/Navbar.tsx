@@ -4,23 +4,30 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
-import { X, ArrowRight, Phone } from "lucide-react";
-import { soundEngine } from "@/lib/sound";
+import { Menu, X } from "lucide-react";
 
 export default function Navbar() {
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pathname = usePathname();
 
-  const [prevPathname, setPrevPathname] = useState(pathname);
-  if (pathname !== prevPathname) {
-    setPrevPathname(pathname);
-    setMenuOpen(false);
-  }
-
-  // Lock body scroll when menu is open
   useEffect(() => {
-    if (menuOpen) {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 20);
+    };
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  // Close menu when route changes
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [pathname]);
+
+  // Lock scroll when mobile menu is open
+  useEffect(() => {
+    if (mobileMenuOpen) {
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "";
@@ -28,161 +35,140 @@ export default function Navbar() {
     return () => {
       document.body.style.overflow = "";
     };
-  }, [menuOpen]);
+  }, [mobileMenuOpen]);
 
   const navLinks = [
-    { label: "Home", href: "/" },
     { label: "Inventory", href: "/inventory" },
-    { label: "Blog", href: "/blog" },
     { label: "About", href: "/about" },
+    { label: "Journal", href: "/blog" },
     { label: "Contact", href: "/contact" },
   ];
 
   return (
     <>
-      {/* ─── Main Navbar (Light Monochrome floating at top) ─── */}
       <header
-        className="absolute top-0 left-0 right-0 z-40 w-full py-6 md:py-8 px-6 sm:px-10 lg:px-16 bg-transparent"
-        role="banner"
+        className={`fixed top-0 left-0 right-0 z-40 transition-colors duration-200 bg-white ${
+          scrolled ? "border-b border-[#E8E8E8]" : "border-b border-transparent"
+        }`}
       >
-        <div className="relative mx-auto w-full max-w-[1440px] flex items-center justify-between">
-          
-          {/* Left: Brand Logo from /logo.png */}
+        <div className="max-w-[1320px] mx-auto px-6 sm:px-10 lg:px-16 h-20 flex items-center justify-between">
+          {/* Left: Logo mark */}
           <Link
             href="/"
-            aria-label="Aston Auto Stores"
-            className="group flex items-center focus:outline-none"
-            onMouseEnter={() => soundEngine.playHoverTick()}
+            className="flex items-center gap-3 focus:outline-none"
+            aria-label="Aston Auto Stores Home"
           >
-            <div className="relative h-9 sm:h-11 w-auto flex items-center transition-transform duration-300 group-hover:scale-105">
-              <Image
-                src="/logo.png"
-                alt="Aston Auto"
-                width={180}
-                height={100}
-                priority
-                className="h-8 sm:h-10 w-auto object-contain drop-shadow-[0_2px_8px_rgba(0,0,0,0.12)]"
-              />
-            </div>
+            <Image
+              src="/logo.png"
+              alt="Aston Auto Stores"
+              width={160}
+              height={44}
+              priority
+              className="h-8 w-auto object-contain"
+            />
           </Link>
 
-          {/* Center: 4-Dot Menu Trigger (2x2 Grid) */}
-          <div className="absolute left-1/2 -translate-x-1/2">
-            <button
-              onClick={() => {
-                soundEngine.playHoverTick();
-                setMenuOpen(!menuOpen);
-              }}
-              aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"}
-              aria-expanded={menuOpen}
-              className="group p-3 -m-3 flex items-center justify-center rounded-lg transition-transform duration-200 hover:scale-125 focus:outline-none cursor-pointer"
-            >
-              <div className="grid grid-cols-2 gap-1.5 w-4 h-4 transition-transform duration-300 group-hover:rotate-90">
-                <span className="w-1.5 h-1.5 rounded-full bg-black group-hover:bg-neutral-600 transition-colors duration-200" />
-                <span className="w-1.5 h-1.5 rounded-full bg-black group-hover:bg-neutral-600 transition-colors duration-200" />
-                <span className="w-1.5 h-1.5 rounded-full bg-black group-hover:bg-neutral-600 transition-colors duration-200" />
-                <span className="w-1.5 h-1.5 rounded-full bg-black group-hover:bg-neutral-600 transition-colors duration-200" />
-              </div>
-            </button>
-          </div>
+          {/* Center: Desktop Links */}
+          <nav className="hidden md:flex items-center gap-8 text-[15px] font-medium text-[#6B6B6B]">
+            {navLinks.map((link) => {
+              const isActive = pathname === link.href;
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={`transition-colors duration-150 hover:text-[#0A0A0A] ${
+                    isActive ? "text-[#0A0A0A]" : ""
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
+          </nav>
 
-          {/* Right: Direct Phone / Contact Link */}
-          <div className="flex items-center gap-6">
-            <a
-              href="tel:+14482264666"
-              className="hidden sm:inline-flex items-center gap-2 text-xs font-mono font-medium text-neutral-600 hover:text-black transition-colors"
-            >
-              <Phone className="w-3.5 h-3.5 text-black" />
-              <span>+1 448 226 4666</span>
-            </a>
-
+          {/* Right: CTA Button */}
+          <div className="hidden md:flex items-center">
             <Link
-              href="/contact"
-              onMouseEnter={() => soundEngine.playHoverTick()}
-              className="text-xs sm:text-sm font-bold uppercase tracking-wider text-black hover:text-neutral-600 transition-colors duration-200 focus:outline-none"
+              href="/contact?topic=test-drive"
+              className="inline-flex items-center justify-center px-5 py-2.5 rounded-lg bg-[#0A0A0A] text-white text-xs font-medium tracking-wide transition-opacity hover:opacity-90"
             >
-              Contact
+              Book a Test Drive
             </Link>
           </div>
 
+          {/* Mobile Menu Button */}
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+            className="md:hidden p-2 -mr-2 text-[#0A0A0A] focus:outline-none"
+          >
+            {mobileMenuOpen ? (
+              <X className="w-6 h-6" strokeWidth={1.5} />
+            ) : (
+              <Menu className="w-6 h-6" strokeWidth={1.5} />
+            )}
+          </button>
         </div>
       </header>
 
-      {/* ─── Full-Screen Overlay Navigation (Ultra-Clean Light Monochrome) ─── */}
-      <AnimatePresence>
-        {menuOpen && (
-          <motion.div
-            initial={{ opacity: 0, clipPath: "inset(0 0 100% 0)" }}
-            animate={{ opacity: 1, clipPath: "inset(0 0 0% 0)" }}
-            exit={{ opacity: 0, clipPath: "inset(0 0 100% 0)" }}
-            transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-            className="fixed inset-0 z-50 bg-white/98 backdrop-blur-2xl flex flex-col justify-between p-8 sm:p-12 lg:p-20 overflow-y-auto text-black"
-          >
-            {/* Top Bar inside Menu */}
-            <div className="w-full max-w-[1440px] mx-auto flex items-center justify-between">
-              <span className="font-display text-xs uppercase tracking-[0.25em] text-neutral-500 font-bold">
-                Aston Auto Navigation
-              </span>
-              <button
-                onClick={() => setMenuOpen(false)}
-                aria-label="Close menu"
-                className="flex items-center gap-2 text-xs uppercase tracking-widest font-bold text-neutral-600 hover:text-black transition-colors p-2 -mr-2 cursor-pointer"
+      {/* Mobile Full-Screen Menu */}
+      {mobileMenuOpen && (
+        <div className="fixed inset-0 z-50 bg-white flex flex-col justify-between p-6 sm:p-10 md:hidden animate-in fade-in duration-200">
+          <div className="flex items-center justify-between h-20">
+            <Link
+              href="/"
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center"
+              aria-label="Aston Auto Stores Home"
+            >
+              <Image
+                src="/logo.png"
+                alt="Aston Auto Stores"
+                width={140}
+                height={38}
+                priority
+                className="h-7 w-auto object-contain"
+              />
+            </Link>
+            <button
+              onClick={() => setMobileMenuOpen(false)}
+              aria-label="Close menu"
+              className="p-2 -mr-2 text-[#0A0A0A] focus:outline-none"
+            >
+              <X className="w-6 h-6" strokeWidth={1.5} />
+            </button>
+          </div>
+
+          <nav className="flex flex-col space-y-6 my-auto">
+            {navLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={() => setMobileMenuOpen(false)}
+                className="text-3xl font-medium text-[#0A0A0A] tracking-tight hover:text-[#6B6B6B] transition-colors"
               >
-                <span>Close</span>
-                <X className="w-4 h-4 text-black" />
-              </button>
-            </div>
+                {link.label}
+              </Link>
+            ))}
+          </nav>
 
-            {/* Menu Links */}
-            <div className="w-full max-w-[1440px] mx-auto my-auto py-10">
-              <nav className="flex flex-col space-y-4 sm:space-y-6">
-                {navLinks.map((link, i) => {
-                  const isActive = pathname === link.href;
-                  return (
-                    <motion.div
-                      key={link.href}
-                      initial={{ opacity: 0, x: -30 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -20 }}
-                      transition={{ delay: 0.08 + i * 0.05, duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                    >
-                      <Link
-                        href={link.href}
-                        onClick={() => setMenuOpen(false)}
-                        onMouseEnter={() => soundEngine.playHoverTick()}
-                        className={`group inline-flex items-center gap-4 font-display font-black text-4xl sm:text-6xl md:text-7xl lg:text-6xl uppercase tracking-tight transition-all duration-300 ${
-                          isActive
-                            ? "text-black translate-x-3 font-black"
-                            : "text-neutral-400 hover:text-black hover:translate-x-3"
-                        }`}
-                      >
-                        <span>{link.label}</span>
-                        <ArrowRight className="w-6 h-6 sm:w-8 sm:h-8 opacity-0 -translate-x-4 group-hover:opacity-100 group-hover:translate-x-0 transition-all text-black" />
-                      </Link>
-                    </motion.div>
-                  );
-                })}
-              </nav>
-            </div>
-
-            {/* Bottom Footer Info */}
-            <div className="w-full max-w-[1440px] mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-6 border-t border-neutral-200 text-neutral-600 text-xs uppercase tracking-widest font-mono">
-              <div className="flex items-center gap-4">
-                <span>Miami &bull; Los Angeles &bull; New York</span>
-                <span className="text-neutral-400">|</span>
-                <a href="tel:+14482264666" className="text-black font-semibold hover:underline">
-                  +1 448 226 4666
-                </a>
-              </div>
-              <div className="flex items-center gap-6">
-                <a href="https://instagram.com" target="_blank" rel="noreferrer" className="hover:text-black transition-colors">Instagram</a>
-                <a href="https://twitter.com" target="_blank" rel="noreferrer" className="hover:text-black transition-colors">X</a>
-                <a href="https://linkedin.com" target="_blank" rel="noreferrer" className="hover:text-black transition-colors">LinkedIn</a>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          <div className="pt-8 border-t border-[#E8E8E8] flex flex-col gap-4">
+            <Link
+              href="/contact?topic=test-drive"
+              onClick={() => setMobileMenuOpen(false)}
+              className="w-full inline-flex items-center justify-center py-3.5 rounded-lg bg-[#0A0A0A] text-white text-sm font-medium transition-opacity hover:opacity-90"
+            >
+              Book a Test Drive
+            </Link>
+            <a
+              href="tel:+14482264666"
+              className="text-center text-xs font-medium text-[#6B6B6B] hover:text-[#0A0A0A] transition-colors"
+            >
+              +1 448 226 4666
+            </a>
+          </div>
+        </div>
+      )}
     </>
   );
 }
